@@ -1,0 +1,601 @@
+import { Metadata } from 'next';
+import { motion } from 'framer-motion';
+import { FiHome, FiMap, FiSearch, FiArrowLeft } from 'react-icons/fi';
+
+import { Button } from '@/components/ui/Button';
+
+// ==========================================
+// METADATA
+// ==========================================
+
+export const metadata: Metadata = {
+  title: 'Page Not Found',
+  description: 'The requested page could not be found in the Industrial Air Quality Monitoring System.',
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
+
+// ==========================================
+// NOT FOUND PAGE COMPONENT
+// ==========================================
+
+export default function NotFoundPage(): React.JSX.Element {
+  
+  const handleGoHome = () => {
+    window.location.href = '/';
+  };
+
+  const handleGoBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = '/';
+    }
+  };
+
+  const handleExploreMap = () => {
+    // In a real application, this would navigate to the map page
+    console.log('Navigate to interactive map');
+  };
+
+  return (
+    <div className="not-found-page">
+      <div className="not-found-container">
+        <div className="not-found-content">
+          {/* 404 Illustration */}
+          <motion.div 
+            className="not-found-illustration"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+          >
+            <div className="illustration-404">
+              <span className="four">4</span>
+              <div className="zero">
+                <div className="satellite-icon">🛰️</div>
+              </div>
+              <span className="four">4</span>
+            </div>
+            
+            <motion.div 
+              className="illustration-subtitle"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.6 }}
+            >
+              Signal not found
+            </motion.div>
+          </motion.div>
+
+          {/* Content */}
+          <motion.div
+            className="not-found-text"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.6 }}
+          >
+            <h1 className="not-found-title">Page Not Found</h1>
+            <p className="not-found-description">
+              The page you're looking for seems to have drifted out of our monitoring range. 
+              It might have been moved, deleted, or the URL might be incorrect.
+            </p>
+            
+            <div className="suggestions">
+              <h3 className="suggestions-title">What you can do:</h3>
+              <ul className="suggestions-list">
+                <li>Check the URL for typos</li>
+                <li>Use the navigation menu to find what you need</li>
+                <li>Go back to the homepage and start fresh</li>
+                <li>Explore our interactive air quality map</li>
+              </ul>
+            </div>
+          </motion.div>
+
+          {/* Action Buttons */}
+          <motion.div
+            className="not-found-actions"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8, duration: 0.6 }}
+          >
+            <Button
+              variant="primary"
+              size="lg"
+              leftIcon={<FiHome />}
+              onClick={handleGoHome}
+              className="primary-action"
+            >
+              Go Home
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="lg"
+              leftIcon={<FiArrowLeft />}
+              onClick={handleGoBack}
+            >
+              Go Back
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="md"
+              leftIcon={<FiMap />}
+              onClick={handleExploreMap}
+            >
+              Explore Map
+            </Button>
+          </motion.div>
+
+          {/* Quick Links */}
+          <motion.div
+            className="quick-links"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.0, duration: 0.6 }}
+          >
+            <h4 className="quick-links-title">Popular Pages</h4>
+            <div className="quick-links-grid">
+              <a href="/#vision-section" className="quick-link">
+                <span className="quick-link-icon"></span>
+                <span className="quick-link-text">Our Vision</span>
+              </a>
+              
+              <a href="/#team-section" className="quick-link">
+                <span className="quick-link-icon">👥</span>
+                <span className="quick-link-text">Meet the Team</span>
+              </a>
+              
+              <a href="/docs" className="quick-link">
+                <span className="quick-link-icon">📚</span>
+                <span className="quick-link-text">Documentation</span>
+              </a>
+              
+              <a href="https://github.com/air-quality-team" className="quick-link" target="_blank" rel="noopener noreferrer">
+                <span className="quick-link-icon">💻</span>
+                <span className="quick-link-text">Source Code</span>
+              </a>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Background Animation */}
+        <div className="floating-elements">
+          <motion.div 
+            className="floating-element element-1"
+            animate={{ 
+              y: [0, -30, 0],
+              rotate: [0, 10, 0]
+            }}
+            transition={{ 
+              duration: 8, 
+              repeat: Infinity, 
+              ease: 'easeInOut' 
+            }}
+          />
+          
+          <motion.div 
+            className="floating-element element-2"
+            animate={{ 
+              y: [0, 25, 0],
+              rotate: [0, -5, 0]
+            }}
+            transition={{ 
+              duration: 6, 
+              repeat: Infinity, 
+              ease: 'easeInOut',
+              delay: 2
+            }}
+          />
+          
+          <motion.div 
+            className="floating-element element-3"
+            animate={{ 
+              y: [0, -15, 0],
+              rotate: [0, 8, 0]
+            }}
+            transition={{ 
+              duration: 7, 
+              repeat: Infinity, 
+              ease: 'easeInOut',
+              delay: 4
+            }}
+          />
+        </div>
+      </div>
+
+      <style>{`
+        .not-found-page {
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--color-background);
+          padding: var(--space-lg);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .not-found-container {
+          position: relative;
+          z-index: 1;
+          width: 100%;
+          max-width: 800px;
+        }
+
+        .not-found-content {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          padding: var(--space-3xl);
+          background: var(--glass-bg);
+          backdrop-filter: var(--glass-backdrop-filter);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--border-radius-2xl);
+          box-shadow: var(--glass-shadow);
+        }
+
+        /* 404 Illustration */
+        .not-found-illustration {
+          margin-bottom: var(--space-3xl);
+        }
+
+        .illustration-404 {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: var(--space-lg);
+          margin-bottom: var(--space-md);
+        }
+
+        .four {
+          font-size: 8rem;
+          font-weight: var(--font-weight-extrabold);
+          color: var(--color-primary);
+          text-shadow: 0 0 30px rgba(0, 212, 170, 0.3);
+          line-height: 1;
+        }
+
+        .zero {
+          position: relative;
+          width: 120px;
+          height: 120px;
+          border: 6px solid var(--color-primary);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .zero::before {
+          content: '';
+          position: absolute;
+          inset: -6px;
+          border-radius: 50%;
+          padding: 6px;
+          background: conic-gradient(from 0deg, var(--color-primary), transparent, var(--color-primary));
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask-composite: xor;
+          animation: rotate 4s linear infinite;
+        }
+
+        .satellite-icon {
+          font-size: var(--font-size-3xl);
+          animation: float 3s ease-in-out infinite;
+        }
+
+        .illustration-subtitle {
+          font-size: var(--font-size-lg);
+          color: var(--color-text-secondary);
+          font-weight: var(--font-weight-medium);
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+        }
+
+        /* Content */
+        .not-found-text {
+          margin-bottom: var(--space-3xl);
+          max-width: 600px;
+        }
+
+        .not-found-title {
+          font-size: var(--font-size-3xl);
+          font-weight: var(--font-weight-bold);
+          color: var(--color-text-primary);
+          margin-bottom: var(--space-lg);
+          line-height: var(--line-height-tight);
+        }
+
+        .not-found-description {
+          font-size: var(--font-size-lg);
+          color: var(--color-text-secondary);
+          line-height: var(--line-height-relaxed);
+          margin-bottom: var(--space-2xl);
+        }
+
+        .suggestions {
+          text-align: left;
+          background: rgba(255, 255, 255, 0.05);
+          padding: var(--space-xl);
+          border-radius: var(--border-radius-lg);
+          border: 1px solid var(--color-border);
+        }
+
+        .suggestions-title {
+          font-size: var(--font-size-base);
+          font-weight: var(--font-weight-semibold);
+          color: var(--color-text-primary);
+          margin-bottom: var(--space-md);
+        }
+
+        .suggestions-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+
+        .suggestions-list li {
+          font-size: var(--font-size-sm);
+          color: var(--color-text-secondary);
+          line-height: var(--line-height-relaxed);
+          margin-bottom: var(--space-xs);
+          position: relative;
+          padding-left: var(--space-lg);
+        }
+
+        .suggestions-list li::before {
+          content: '→';
+          position: absolute;
+          left: 0;
+          color: var(--color-primary);
+          font-weight: bold;
+        }
+
+        /* Actions */
+        .not-found-actions {
+          display: flex;
+          gap: var(--space-lg);
+          margin-bottom: var(--space-3xl);
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+
+        .primary-action {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .primary-action::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+          transition: left 0.5s;
+        }
+
+        .primary-action:hover::before {
+          left: 100%;
+        }
+
+        /* Quick Links */
+        .quick-links {
+          width: 100%;
+        }
+
+        .quick-links-title {
+          font-size: var(--font-size-lg);
+          font-weight: var(--font-weight-semibold);
+          color: var(--color-text-primary);
+          margin-bottom: var(--space-lg);
+        }
+
+        .quick-links-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+          gap: var(--space-md);
+        }
+
+        .quick-link {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: var(--space-lg);
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid var(--color-border);
+          border-radius: var(--border-radius-lg);
+          color: var(--color-text-secondary);
+          text-decoration: none;
+          transition: all var(--transition-normal);
+        }
+
+        .quick-link:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: var(--color-primary);
+          color: var(--color-text-primary);
+          transform: translateY(-2px);
+        }
+
+        .quick-link-icon {
+          font-size: var(--font-size-xl);
+          margin-bottom: var(--space-sm);
+          display: block;
+        }
+
+        .quick-link-text {
+          font-size: var(--font-size-sm);
+          font-weight: var(--font-weight-medium);
+          text-align: center;
+        }
+
+        /* Floating Elements */
+        .floating-elements {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        .floating-element {
+          position: absolute;
+          border-radius: 50%;
+          background: var(--gradient-primary);
+          opacity: 0.1;
+          will-change: transform;
+        }
+
+        .element-1 {
+          width: 100px;
+          height: 100px;
+          top: 15%;
+          right: 10%;
+        }
+
+        .element-2 {
+          width: 150px;
+          height: 150px;
+          bottom: 20%;
+          left: 15%;
+        }
+
+        .element-3 {
+          width: 80px;
+          height: 80px;
+          top: 60%;
+          right: 20%;
+        }
+
+        /* Animations */
+        @keyframes rotate {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-10px);
+          }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+          .not-found-page {
+            padding: var(--space-md);
+          }
+
+          .not-found-content {
+            padding: var(--space-2xl) var(--space-lg);
+          }
+
+          .illustration-404 {
+            gap: var(--space-md);
+          }
+
+          .four {
+            font-size: 5rem;
+          }
+
+          .zero {
+            width: 80px;
+            height: 80px;
+          }
+
+          .satellite-icon {
+            font-size: var(--font-size-xl);
+          }
+
+          .not-found-title {
+            font-size: var(--font-size-2xl);
+          }
+
+          .not-found-description {
+            font-size: var(--font-size-base);
+          }
+
+          .not-found-actions {
+            flex-direction: column;
+            gap: var(--space-md);
+            align-items: center;
+          }
+
+          .quick-links-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-sm);
+          }
+        }
+
+        @media (max-width: 480px) {
+          .suggestions {
+            padding: var(--space-lg);
+          }
+
+          .four {
+            font-size: 4rem;
+          }
+
+          .zero {
+            width: 60px;
+            height: 60px;
+          }
+
+          .quick-links-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .floating-element {
+            display: none;
+          }
+        }
+
+        /* High Contrast Mode */
+        @media (prefers-contrast: high) {
+          .not-found-content {
+            background: var(--color-surface);
+            border: 2px solid var(--color-border);
+          }
+
+          .suggestions,
+          .quick-link {
+            background: var(--color-surface-elevated);
+            border: 2px solid var(--color-border);
+          }
+        }
+
+        /* Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+          .zero::before {
+            animation: none;
+          }
+
+          .satellite-icon {
+            animation: none;
+          }
+
+          .floating-element {
+            animation: none;
+          }
+
+          .primary-action::before {
+            display: none;
+          }
+
+          .quick-link:hover {
+            transform: none;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}

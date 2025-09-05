@@ -1,0 +1,652 @@
+/* ==========================================
+   CONTRIBUTORS SECTION STYLES
+   Team showcase with professional glassmorphism
+   ========================================== */
+
+.contributors {
+  position: relative;
+  padding: var(--section-padding) 0;
+  background: var(--color-background);
+  overflow: hidden;
+}
+
+.contributors::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 30% 40%, rgba(0, 212, 170, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 70% 80%, rgba(108, 92, 231, 0.03) 0%, transparent 50%);
+  z-index: -1;
+}
+
+.container {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+/* ==========================================
+   HEADER STYLES
+   ========================================== */
+
+.header {
+  text-align: center;
+  margin-bottom: var(--space-5xl);
+}
+
+.title {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-lg);
+  line-height: var(--line-height-tight);
+}
+
+.gradientText {
+  background: var(--gradient-primary);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% 200%;
+  animation: gradientShift 3s ease-in-out infinite;
+}
+
+.subtitle {
+  font-size: var(--font-size-xl);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* ==========================================
+   STATS SECTION
+   ========================================== */
+
+.statsSection {
+  margin-bottom: var(--space-5xl);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-xl);
+}
+
+.statCard {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-backdrop-filter);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-2xl);
+  box-shadow: var(--glass-shadow);
+  transition: all var(--transition-normal);
+  cursor: pointer;
+}
+
+.statCard:hover {
+  border-color: var(--color-primary);
+  box-shadow: 
+    var(--glass-shadow),
+    0 0 25px rgba(0, 212, 170, 0.15);
+  transform: translateY(-5px);
+}
+
+.statIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: rgba(0, 212, 170, 0.1);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--border-radius-xl);
+  color: var(--color-primary);
+  flex-shrink: 0;
+  transition: all var(--transition-normal);
+}
+
+.statCard:hover .statIcon {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(0, 212, 170, 0.4);
+}
+
+.statContent {
+  flex: 1;
+}
+
+.statValue {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-primary);
+  margin-bottom: var(--space-xs);
+  line-height: var(--line-height-tight);
+}
+
+.statLabel {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-xs);
+  line-height: var(--line-height-tight);
+}
+
+.statDescription {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+/* ==========================================
+   TEAM SECTION
+   ========================================== */
+
+.teamSection {
+  margin-bottom: var(--space-5xl);
+}
+
+.sectionHeader {
+  text-align: center;
+  margin-bottom: var(--space-4xl);
+}
+
+.sectionTitle {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-md);
+}
+
+.sectionSubtitle {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.teamGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-2xl);
+  margin-top: var(--space-3xl);
+}
+
+/* ==========================================
+   COLLABORATION SECTION
+   ========================================== */
+
+.collaborationSection {
+  margin-bottom: var(--space-5xl);
+}
+
+.collaborationCard {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: var(--space-4xl);
+  align-items: center;
+  padding: var(--space-4xl) var(--space-3xl);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-backdrop-filter);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-2xl);
+  box-shadow: var(--glass-shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+.collaborationContent {
+  z-index: 2;
+}
+
+.collaborationTitle {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-lg);
+  line-height: var(--line-height-tight);
+}
+
+.collaborationDescription {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  margin-bottom: var(--space-2xl);
+}
+
+.collaborationFeatures {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-2xl);
+}
+
+.feature {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+}
+
+.featureIcon {
+  font-size: var(--font-size-lg);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.featureText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.featureText strong {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
+}
+
+.featureText span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+}
+
+.collaborationActions {
+  display: flex;
+  gap: var(--space-lg);
+}
+
+/* ==========================================
+   COLLABORATION VISUAL
+   ========================================== */
+
+.collaborationVisual {
+  position: relative;
+  height: 250px;
+  z-index: 1;
+}
+
+.networkNode {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background: var(--gradient-primary);
+  border-radius: 50%;
+  animation: networkPulse 3s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(0, 212, 170, 0.4);
+}
+
+.networkNode:nth-child(1) {
+  top: 20%;
+  left: 20%;
+  animation-delay: 0s;
+}
+
+.networkNode:nth-child(2) {
+  top: 20%;
+  right: 20%;
+  animation-delay: 1s;
+}
+
+.networkNode:nth-child(3) {
+  bottom: 30%;
+  left: 30%;
+  animation-delay: 2s;
+}
+
+.networkNode:nth-child(4) {
+  bottom: 20%;
+  right: 30%;
+  animation-delay: 1.5s;
+}
+
+.connectionLine {
+  position: absolute;
+  height: 2px;
+  background: var(--gradient-primary);
+  opacity: 0.6;
+  animation: connectionFlow 4s ease-in-out infinite;
+}
+
+.connectionLine:nth-child(5) {
+  top: 35%;
+  left: 25%;
+  right: 25%;
+  transform: rotate(-10deg);
+  animation-delay: 0.5s;
+}
+
+.connectionLine:nth-child(6) {
+  bottom: 45%;
+  left: 35%;
+  right: 35%;
+  transform: rotate(15deg);
+  animation-delay: 1.5s;
+}
+
+.connectionLine:nth-child(7) {
+  top: 30%;
+  bottom: 50%;
+  left: 50%;
+  width: 2px;
+  height: auto;
+  transform: rotate(75deg);
+  animation-delay: 2.5s;
+}
+
+/* ==========================================
+   ACKNOWLEDGMENTS SECTION
+   ========================================== */
+
+.acknowledgments {
+  margin-bottom: var(--space-3xl);
+}
+
+.acknowledgmentCard {
+  padding: var(--space-2xl) var(--space-3xl);
+  background: rgba(0, 212, 170, 0.05);
+  border: 1px solid rgba(0, 212, 170, 0.2);
+  border-radius: var(--border-radius-2xl);
+  text-align: center;
+}
+
+.acknowledgmentTitle {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-lg);
+}
+
+.acknowledgmentText {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  margin-bottom: var(--space-xl);
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.acknowledgmentText strong {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.institutionInfo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.institutionLogo {
+  font-size: var(--font-size-3xl);
+}
+
+.institutionDetails {
+  text-align: left;
+}
+
+.institutionName {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.institutionDept {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ==========================================
+   LOADING SKELETON
+   ========================================== */
+
+.skeleton {
+  min-height: 1000px;
+  background: var(--color-background);
+  padding: var(--section-padding) 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ==========================================
+   ANIMATIONS
+   ========================================== */
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes networkPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+@keyframes connectionFlow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scaleX(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scaleX(1.1);
+  }
+}
+
+/* ==========================================
+   RESPONSIVE DESIGN
+   ========================================== */
+
+@media (max-width: 1200px) {
+  .collaborationCard {
+    grid-template-columns: 1fr;
+    gap: var(--space-2xl);
+    text-align: center;
+  }
+
+  .collaborationActions {
+    justify-content: center;
+  }
+
+  .collaborationVisual {
+    height: 200px;
+  }
+
+  .networkNode {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 768px) {
+  .contributors {
+    padding: var(--space-4xl) 0;
+  }
+
+  .container {
+    padding: 0 var(--space-md);
+  }
+
+  .title {
+    font-size: var(--font-size-3xl);
+  }
+
+  .subtitle {
+    font-size: var(--font-size-base);
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+    gap: var(--space-lg);
+  }
+
+  .statCard {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--space-md);
+  }
+
+  .teamGrid {
+    grid-template-columns: 1fr;
+    gap: var(--space-xl);
+  }
+
+  .sectionTitle {
+    font-size: var(--font-size-2xl);
+  }
+
+  .sectionSubtitle {
+    font-size: var(--font-size-base);
+  }
+
+  .collaborationCard {
+    padding: var(--space-2xl) var(--space-lg);
+  }
+
+  .collaborationTitle {
+    font-size: var(--font-size-xl);
+  }
+
+  .collaborationFeatures {
+    gap: var(--space-md);
+  }
+
+  .collaborationActions {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+  }
+
+  .acknowledgmentCard {
+    padding: var(--space-xl) var(--space-lg);
+  }
+
+  .institutionInfo {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .institutionDetails {
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    margin-bottom: var(--space-3xl);
+  }
+
+  .statsSection,
+  .teamSection,
+  .collaborationSection {
+    margin-bottom: var(--space-3xl);
+  }
+
+  .statValue {
+    font-size: var(--font-size-xl);
+  }
+
+  .statLabel {
+    font-size: var(--font-size-base);
+  }
+
+  .collaborationVisual {
+    display: none;
+  }
+
+  .networkNode,
+  .connectionLine {
+    display: none;
+  }
+}
+
+/* ==========================================
+   HIGH CONTRAST MODE
+   ========================================== */
+
+@media (prefers-contrast: high) {
+  .statCard,
+  .collaborationCard,
+  .acknowledgmentCard {
+    background: var(--color-surface-elevated);
+    border: 2px solid var(--color-border);
+  }
+
+  .gradientText {
+    -webkit-text-fill-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .institutionInfo {
+    background: var(--color-surface);
+    border: 2px solid var(--color-border);
+  }
+}
+
+/* ==========================================
+   REDUCED MOTION
+   ========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .gradientText {
+    animation: none;
+  }
+
+  .networkPulse,
+  .connectionFlow {
+    animation: none;
+  }
+
+  .statCard {
+    transition: border-color var(--transition-fast);
+  }
+
+  .statCard:hover {
+    transform: none;
+  }
+
+  .statIcon {
+    transition: background-color var(--transition-fast),
+               color var(--transition-fast);
+  }
+
+  .statCard:hover .statIcon {
+    transform: none;
+  }
+
+  .networkNode {
+    animation: none;
+  }
+
+  .connectionLine {
+    animation: none;
+  }
+}

@@ -1,0 +1,70 @@
+/* ==========================================
+   SKIP LINK COMPONENT STYLES
+   Accessible skip navigation for keyboard users
+   ========================================== */
+
+.skipLink {
+  position: absolute;
+  top: -100px;
+  left: var(--space-lg);
+  z-index: 10000;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+.skipLink:focus,
+.skipLink:focus-visible {
+  top: var(--space-lg);
+  transform: translateY(0);
+  opacity: 1;
+  outline: 2px solid var(--color-text-inverse);
+  outline-offset: 2px;
+}
+
+.skipLink:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl);
+}
+
+.skipLink:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-md);
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .skipLink {
+    background: var(--color-text-primary);
+    color: var(--color-background);
+    border: 2px solid var(--color-primary);
+  }
+  
+  .skipLink:focus,
+  .skipLink:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 3px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .skipLink {
+    transition: opacity var(--transition-fast);
+  }
+  
+  .skipLink:hover,
+  .skipLink:active {
+    transform: none;
+  }
+}

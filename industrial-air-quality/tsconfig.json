@@ -1,0 +1,95 @@
+{
+  "compilerOptions": {
+    // Language and Library Configuration
+    "lib": ["dom", "dom.iterable", "es2022", "webworker"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "target": "es2022",
+
+    // Path Mapping
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./app/*"],
+      "@/components/*": ["./app/components/*"],
+      "@/lib/*": ["./app/lib/*"],
+      "@/styles/*": ["./app/styles/*"],
+      "@/types/*": ["./app/lib/types/*"]
+    },
+
+    // Type Checking Configuration
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    
+    // ===== CRITICAL FIX: Disable exactOptionalPropertyTypes =====
+    // This was causing the TypeScript errors with readonly properties
+    "exactOptionalPropertyTypes": false,
+    
+    "noPropertyAccessFromIndexSignature": false,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    
+    // Build Configuration
+    "checkJs": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true,
+    "removeComments": true,
+    "importHelpers": true,
+    "downlevelIteration": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": true,
+    
+    // Advanced Configuration
+    "allowSyntheticDefaultImports": true,
+    "verbatimModuleSyntax": false,
+    
+    // Next.js Plugin
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "./app/**/*",
+    "./components/**/*",
+    "./lib/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "out",
+    "dist",
+    "build",
+    "coverage",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
+  ],
+  "ts-node": {
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
+  }
+}

@@ -1,0 +1,814 @@
+/* ==========================================
+   ENHANCED HERO SECTION - PRODUCTION GRADE
+   Million-dollar professional styling with advanced effects
+   ========================================== */
+
+/* ==========================================
+   CSS CUSTOM PROPERTIES & OPTIMIZATION
+   ========================================== */
+
+.hero {
+  /* Performance optimizations */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: style layout paint;
+
+  /* Core layout */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  isolation: isolate;
+
+  /* Advanced background */
+  background: 
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(108, 92, 231, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 60% at 80% 50%, rgba(0, 212, 170, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 100% at 20% 80%, rgba(236, 72, 153, 0.06) 0%, transparent 60%),
+    linear-gradient(135deg, 
+      var(--color-background) 0%, 
+      color-mix(in srgb, var(--color-background) 95%, var(--color-primary) 5%) 100%
+    );
+
+  /* Dynamic mouse interaction */
+  background-position: 
+    calc(50% + var(--mouse-x, 0) * 20px) calc(-20% + var(--mouse-y, 0) * 10px),
+    calc(80% + var(--mouse-x, 0) * -15px) calc(50% + var(--mouse-y, 0) * 8px),
+    calc(20% + var(--mouse-x, 0) * 25px) calc(80% + var(--mouse-y, 0) * -12px),
+    0% 0%;
+  
+  transition: background-position 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* CSS Grid for precise layout control */
+  display: grid;
+  grid-template-rows: 1fr auto;
+  grid-template-areas: 
+    "main"
+    "scroll";
+}
+
+/* ==========================================
+   BACKGROUND CONTAINER - LAYERED EFFECTS
+   ========================================== */
+
+.backgroundContainer {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  opacity: 0.9;
+  
+  /* Advanced backdrop blur with fallback */
+  backdrop-filter: blur(0.5px) saturate(1.1);
+  -webkit-backdrop-filter: blur(0.5px) saturate(1.1);
+}
+
+.backgroundContainer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  
+  /* Animated gradient overlay */
+  background: 
+    conic-gradient(from 45deg at 30% 70%, 
+      rgba(108, 92, 231, 0.05) 0deg,
+      rgba(0, 212, 170, 0.03) 90deg,
+      rgba(236, 72, 153, 0.04) 180deg,
+      rgba(168, 85, 247, 0.06) 270deg,
+      rgba(108, 92, 231, 0.05) 360deg
+    );
+  
+  animation: rotateGradient 20s linear infinite;
+  opacity: 0.7;
+}
+
+.backgroundContainer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  
+  /* Mesh gradient pattern */
+  background-image: 
+    radial-gradient(circle at 25% 25%, rgba(108, 92, 231, 0.1) 0%, transparent 25%),
+    radial-gradient(circle at 75% 75%, rgba(0, 212, 170, 0.08) 0%, transparent 25%),
+    radial-gradient(circle at 75% 25%, rgba(236, 72, 153, 0.06) 0%, transparent 25%),
+    radial-gradient(circle at 25% 75%, rgba(168, 85, 247, 0.07) 0%, transparent 25%);
+  
+  background-size: 400px 400px;
+  animation: meshFloat 25s ease-in-out infinite;
+}
+
+/* ==========================================
+   CONTAINER & CONTENT LAYOUT
+   ========================================== */
+
+.container {
+  grid-area: main;
+  position: relative;
+  width: 100%;
+  max-width: min(1400px, calc(100vw - 4rem));
+  margin: 0 auto;
+  padding: clamp(2rem, 8vh, 6rem) clamp(1rem, 4vw, 3rem);
+  z-index: 10;
+}
+
+.content {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  max-width: 1000px;
+  margin: 0 auto;
+  gap: clamp(1.5rem, 4vh, 3rem);
+}
+
+/* ==========================================
+   TYPOGRAPHY - ADVANCED TEXT EFFECTS
+   ========================================== */
+
+.preTitle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  
+  /* Professional glass card effect */
+  padding: 0.75rem 1.5rem;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2rem;
+  
+  /* Advanced typography */
+  font-size: clamp(0.875rem, 1.5vw, 1rem);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  
+  /* Subtle glow effect */
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 8px 32px -8px rgba(108, 92, 231, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.preTitle:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 12px 48px -12px rgba(108, 92, 231, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.preTitleIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--color-primary);
+  filter: drop-shadow(0 0 8px rgba(108, 92, 231, 0.4));
+}
+
+/* Main Title Styling */
+.title {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.5rem, 1.5vh, 1rem);
+  margin: 0;
+  
+  /* Advanced typography system */
+  font-family: var(--font-family-sans);
+  font-weight: 800;
+  font-size: clamp(2.5rem, 8vw, 6rem);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--color-text-primary);
+  
+  /* Performance optimization for large text */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.titleLine1,
+.titleLine2,
+.titleLine3 {
+  display: block;
+  position: relative;
+}
+
+.titleLine1 {
+  /* Subtle text shadow for depth */
+  text-shadow: 
+    0 0 40px rgba(255, 255, 255, 0.1),
+    0 4px 8px rgba(0, 0, 0, 0.1);
+  
+  /* Breathing animation */
+  animation: textGlow 6s ease-in-out infinite alternate;
+}
+
+.titleLine2 {
+  font-size: clamp(3rem, 9vw, 7rem);
+  position: relative;
+}
+
+.titleLine3 {
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-top: clamp(0.5rem, 2vh, 1rem);
+}
+
+/* Advanced Gradient Text Effect */
+.gradientText {
+  background: linear-gradient(
+    135deg,
+    #6c5ce7 0%,
+    #00d4aa 25%,
+    #a855f7 50%,
+    #ec4899 75%,
+    #6c5ce7 100%
+  );
+  background-size: 300% 300%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  
+  /* Dynamic gradient animation */
+  animation: gradientFlow 8s ease-in-out infinite;
+  
+  /* Enhanced depth with multiple shadows */
+  filter: 
+    drop-shadow(0 0 20px rgba(108, 92, 231, 0.3))
+    drop-shadow(0 0 40px rgba(0, 212, 170, 0.2));
+  
+  position: relative;
+}
+
+.gradientText::before {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.4), rgba(0, 212, 170, 0.4));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: blur(20px);
+}
+
+/* Subtitle Styling */
+.subtitle {
+  max-width: 700px;
+  margin: 0 auto;
+  
+  /* Professional typography */
+  font-size: clamp(1.125rem, 3vw, 1.375rem);
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.01em;
+  
+  /* Subtle text glow */
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.05);
+}
+
+/* ==========================================
+   STATISTICS DISPLAY
+   ========================================== */
+
+.statsContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: clamp(1rem, 3vw, 2rem);
+  width: 100%;
+  max-width: 800px;
+  margin: clamp(2rem, 4vh, 3rem) auto;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  
+  /* Glass morphism container */
+  padding: clamp(1rem, 3vw, 1.5rem);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(15px) saturate(1.1);
+  -webkit-backdrop-filter: blur(15px) saturate(1.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  
+  /* Professional shadow system */
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 4px 24px -4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.statItem:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 8px 40px -8px rgba(108, 92, 231, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.statValue {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1;
+  
+  /* Gradient text effect */
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  
+  text-shadow: 0 0 20px rgba(108, 92, 231, 0.3);
+}
+
+.statLabel {
+  font-size: clamp(0.75rem, 2vw, 0.875rem);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-align: center;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ==========================================
+   CALL-TO-ACTION BUTTONS
+   ========================================== */
+
+.ctaContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(1rem, 3vw, 1.5rem);
+  justify-content: center;
+  align-items: center;
+  margin-top: clamp(2rem, 5vh, 3rem);
+}
+
+.primaryCta,
+.secondaryCta {
+  position: relative;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.primaryCta {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 4px 20px -4px rgba(108, 92, 231, 0.4),
+    0 8px 40px -8px rgba(108, 92, 231, 0.2);
+}
+
+.primaryCta::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0;
+  filter: blur(8px);
+  transition: opacity 0.3s ease;
+}
+
+.primaryCta:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 8px 32px -4px rgba(108, 92, 231, 0.5),
+    0 16px 64px -16px rgba(108, 92, 231, 0.3);
+}
+
+.primaryCta:hover::before {
+  opacity: 0.6;
+}
+
+.secondaryCta {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 4px 20px -4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.secondaryCta:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px) scale(1.02);
+  
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 6px 24px -4px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* ==========================================
+   FLOATING ELEMENTS CONTAINER
+   ========================================== */
+
+.floatingElements {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ==========================================
+   SCROLL INDICATOR - PREMIUM DESIGN
+   ========================================== */
+
+.scrollIndicator {
+  grid-area: scroll;
+  position: relative;
+  z-index: 15;
+  padding-bottom: clamp(2rem, 5vh, 4rem);
+  justify-self: center;
+}
+
+.scrollButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  
+  /* Reset button styles */
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 1rem;
+  
+  /* Glass morphism effect */
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2rem;
+  
+  color: var(--color-text-muted);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Subtle shadow */
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 4px 16px -4px rgba(0, 0, 0, 0.1);
+}
+
+.scrollButton:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--color-primary);
+  transform: translateY(-2px);
+  
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 8px 32px -8px rgba(108, 92, 231, 0.2);
+}
+
+.scrollButton:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.scrollIcon {
+  width: 1.5rem;
+  height: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.scrollText {
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+/* ==========================================
+   BOTTOM FADE GRADIENT
+   ========================================== */
+
+.bottomFade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: clamp(150px, 20vh, 300px);
+  z-index: 5;
+  pointer-events: none;
+  
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(var(--color-background-rgb), 0.5) 40%,
+    var(--color-background) 100%
+  );
+}
+
+/* ==========================================
+   LOADING STATES
+   ========================================== */
+
+.heroSkeleton {
+  min-height: 100vh;
+  background: var(--color-background);
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+}
+
+.loadingSpinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.spinnerRing {
+  width: 4rem;
+  height: 4rem;
+  border: 3px solid rgba(108, 92, 231, 0.2);
+  border-top: 3px solid var(--color-primary);
+  border-radius: 50%;
+  
+  animation: spin 1s linear infinite;
+}
+
+.spinnerText {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+/* ==========================================
+   ADVANCED ANIMATIONS
+   ========================================== */
+
+@keyframes gradientFlow {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  25% {
+    background-position: 100% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  75% {
+    background-position: 0% 100%;
+  }
+}
+
+@keyframes textGlow {
+  from {
+    text-shadow: 
+      0 0 40px rgba(255, 255, 255, 0.1),
+      0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  to {
+    text-shadow: 
+      0 0 60px rgba(255, 255, 255, 0.15),
+      0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+}
+
+@keyframes rotateGradient {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes meshFloat {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(-10px, -10px) rotate(1deg);
+  }
+  50% {
+    transform: translate(10px, -5px) rotate(-1deg);
+  }
+  75% {
+    transform: translate(-5px, 10px) rotate(0.5deg);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================
+   RESPONSIVE DESIGN - MOBILE FIRST
+   ========================================== */
+
+/* Large tablets and small desktops */
+@media (max-width: 1024px) {
+  .hero {
+    background-size: 
+      150% 120%,
+      120% 100%,
+      100% 130%,
+      100% 100%;
+  }
+  
+  .floatingElements {
+    opacity: 0.7;
+    transform: scale(0.9);
+  }
+  
+  .ctaContainer {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .primaryCta,
+  .secondaryCta {
+    width: 100%;
+    max-width: 320px;
+  }
+}
+
+/* Tablets */
+@media (max-width: 768px) {
+  .hero {
+    grid-template-rows: 1fr;
+    grid-template-areas: "main";
+  }
+  
+  .backgroundContainer::before,
+  .backgroundContainer::after {
+    animation-duration: 30s;
+  }
+  
+  .floatingElements {
+    display: none;
+  }
+  
+  .statsContainer {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  
+  .scrollIndicator {
+    pointer-events: none;
+    position: fixed;
+    bottom: 2rem;
+    left: 30%;
+    transform: translateX(-50%);
+    padding-bottom: 0;
+    background: transparent !important;       /* Remove any background */
+    backdrop-filter: none !important;         /* Remove blur effect */
+    -webkit-backdrop-filter: none !important; /* Safari */
+    border: none !important;                   /* Remove any border */
+  }
+}
+
+/* Mobile devices */
+@media (max-width: 480px) {
+  .container {
+    padding: 2rem 1rem;
+  }
+  
+  .preTitle {
+    font-size: 0.75rem;
+    padding: 0.5rem 1rem;
+  }
+  
+  .title {
+    gap: 0.25rem;
+  }
+  
+  .titleLine3 {
+    margin-top: 0.5rem;
+  }
+  
+  .statsContainer {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .statItem {
+    padding: 0.75rem;
+  }
+}
+
+/* High-resolution displays */
+@media (min-resolution: 2dppx) {
+  .gradientText,
+  .statValue {
+    -webkit-font-smoothing: subpixel-antialiased;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .hero,
+  .backgroundContainer::before,
+  .backgroundContainer::after,
+  .gradientText,
+  .titleLine1,
+  .spinnerRing {
+    animation: none;
+  }
+  
+  .hero {
+    background-position: 50% -20%, 80% 50%, 20% 80%, 0% 0%;
+  }
+  
+  .scrollButton {
+    transition: none;
+  }
+  
+  :global(*) {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Dark mode optimizations */
+@media (prefers-color-scheme: dark) {
+  .preTitle {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  
+  .statItem {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  
+  .secondaryCta {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .preTitle,
+  .statItem,
+  .scrollButton,
+  .secondaryCta {
+    border-width: 2px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  .primaryCta {
+    box-shadow: 0 0 0 2px var(--color-primary);
+  }
+}
+
+/* Print styles */
+@media print {
+  .hero {
+    min-height: auto;
+    background: white;
+    color: black;
+  }
+  
+  .backgroundContainer,
+  .floatingElements,
+  .scrollIndicator {
+    display: none;
+  }
+  
+  .gradientText {
+    -webkit-text-fill-color: black;
+    color: black;
+  }
+}

@@ -1,0 +1,404 @@
+/* ==========================================
+   BUTTON COMPONENT STYLES
+   Production-ready button with all variants and states
+   ========================================== */
+
+/* Base button styles */
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  font-family: var(--font-family-sans);
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  vertical-align: middle;
+  user-select: none;
+  border: 1px solid transparent;
+  border-radius: var(--border-radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  outline: none;
+  overflow: hidden;
+  transform: translateY(0);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.button:hover::before {
+  left: 100%;
+}
+
+/* Focus states */
+.button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.2);
+}
+
+/* Active state */
+.button:active {
+  transform: translateY(1px);
+}
+
+/* ==========================================
+   SIZE VARIANTS
+   ========================================== */
+
+.size-sm {
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--font-size-sm);
+  min-height: 32px;
+  border-radius: var(--border-radius-md);
+}
+
+.size-md {
+  padding: var(--space-sm) var(--space-lg);
+  font-size: var(--font-size-base);
+  min-height: 40px;
+  border-radius: var(--border-radius-lg);
+}
+
+.size-lg {
+  padding: var(--space-md) var(--space-xl);
+  font-size: var(--font-size-lg);
+  min-height: 48px;
+  border-radius: var(--border-radius-lg);
+}
+
+.size-xl {
+  padding: var(--space-lg) var(--space-2xl);
+  font-size: var(--font-size-xl);
+  min-height: 56px;
+  border-radius: var(--border-radius-xl);
+}
+
+/* ==========================================
+   STYLE VARIANTS
+   ========================================== */
+
+/* Primary variant */
+.variant-primary {
+  background: var(--gradient-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-primary);
+  box-shadow: 
+    0 4px 15px rgba(0, 212, 170, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.variant-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-secondary-light) 100%);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 25px rgba(0, 212, 170, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.variant-primary:active {
+  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-secondary-dark) 100%);
+  transform: translateY(0);
+  box-shadow: 
+    0 4px 15px rgba(0, 212, 170, 0.25),
+    inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Secondary variant */
+.variant-secondary {
+  background: var(--color-surface-elevated);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+  box-shadow: 
+    var(--shadow-md),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.variant-secondary:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+  transform: translateY(-2px);
+  box-shadow: 
+    var(--shadow-lg),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.variant-secondary:active {
+  background: var(--color-surface);
+  transform: translateY(0);
+  box-shadow: 
+    var(--shadow-sm),
+    inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Outline variant */
+.variant-outline {
+  background: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+  box-shadow: inset 0 0 0 0 var(--color-primary);
+}
+
+.variant-outline:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 25px rgba(0, 212, 170, 0.25),
+    inset 0 0 0 0 var(--color-primary);
+}
+
+.variant-outline:active {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+  transform: translateY(0);
+}
+
+/* Ghost variant */
+.variant-ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-color: transparent;
+}
+
+.variant-ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.variant-ghost:active {
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(0);
+}
+
+/* Danger variant */
+.variant-danger {
+  background: linear-gradient(135deg, var(--color-error) 0%, #c0392b 100%);
+  color: var(--color-text-inverse);
+  border-color: var(--color-error);
+  box-shadow: 
+    0 4px 15px rgba(232, 67, 147, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.variant-danger:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ea4c89 0%, #d63447 100%);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 25px rgba(232, 67, 147, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.variant-danger:active {
+  background: linear-gradient(135deg, #c23669 0%, #a4243b 100%);
+  transform: translateY(0);
+}
+
+/* ==========================================
+   STATES
+   ========================================== */
+
+/* Full width */
+.fullWidth {
+  width: 100%;
+}
+
+/* Disabled state */
+.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none !important;
+}
+
+.disabled::before {
+  display: none;
+}
+
+/* Loading state */
+.loading {
+  cursor: wait;
+  pointer-events: none;
+}
+
+.loading .content {
+  opacity: 0.7;
+}
+
+/* ==========================================
+   ICONS
+   ========================================== */
+
+.leftIcon,
+.rightIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.leftIcon {
+  margin-right: calc(var(--space-xs) * -1);
+}
+
+.rightIcon {
+  margin-left: calc(var(--space-xs) * -1);
+}
+
+.withLeftIcon.size-sm .leftIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.withRightIcon.size-sm .rightIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.withLeftIcon.size-md .leftIcon,
+.withRightIcon.size-md .rightIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.withLeftIcon.size-lg .leftIcon,
+.withRightIcon.size-lg .rightIcon {
+  width: 18px;
+  height: 18px;
+}
+
+.withLeftIcon.size-xl .leftIcon,
+.withRightIcon.size-xl .rightIcon {
+  width: 20px;
+  height: 20px;
+}
+
+/* ==========================================
+   LOADING SPINNER
+   ========================================== */
+
+.loadingSpinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  animation: spin 1s linear infinite;
+}
+
+.size-sm .loadingSpinner {
+  width: 14px;
+  height: 14px;
+}
+
+.size-lg .loadingSpinner {
+  width: 18px;
+  height: 18px;
+}
+
+.size-xl .loadingSpinner {
+  width: 20px;
+  height: 20px;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================
+   CONTENT
+   ========================================== */
+
+.content {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  transition: opacity var(--transition-fast);
+}
+
+/* ==========================================
+   RESPONSIVE DESIGN
+   ========================================== */
+
+@media (max-width: 768px) {
+  .size-xl {
+    padding: var(--space-md) var(--space-xl);
+    font-size: var(--font-size-lg);
+    min-height: 48px;
+  }
+  
+  .size-lg {
+    padding: var(--space-sm) var(--space-lg);
+    font-size: var(--font-size-base);
+    min-height: 44px;
+  }
+}
+
+/* ==========================================
+   HIGH CONTRAST MODE
+   ========================================== */
+
+@media (prefers-contrast: high) {
+  .button {
+    border-width: 2px;
+  }
+  
+  .variant-primary {
+    background: var(--color-primary);
+    border-color: var(--color-text-primary);
+  }
+  
+  .variant-outline {
+    border-width: 3px;
+  }
+}
+
+/* ==========================================
+   REDUCED MOTION
+   ========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: background-color var(--transition-fast), 
+                color var(--transition-fast),
+                opacity var(--transition-fast);
+  }
+  
+  .button:hover,
+  .button:active {
+    transform: none;
+  }
+  
+  .button::before {
+    display: none;
+  }
+  
+  .loadingSpinner {
+    animation: none;
+  }
+}

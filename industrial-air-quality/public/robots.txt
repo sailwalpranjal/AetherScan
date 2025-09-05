@@ -1,0 +1,90 @@
+# Industrial Air Quality Monitoring System - Robots.txt
+# https://airquality.monitor
+
+User-agent: *
+Allow: /
+
+# Crawl-delay for polite crawling
+Crawl-delay: 1
+
+# Disallow paths that don't need indexing
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/
+Disallow: /private/
+Disallow: *.json$
+
+# Allow important pages
+Allow: /
+Allow: /docs/
+Allow: /about/
+Allow: /team/
+Allow: /contact/
+
+# Sitemaps
+Sitemap: https://airquality.monitor/sitemap.xml
+Sitemap: https://airquality.monitor/sitemap-index.xml
+
+# Specific bot instructions
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 2
+
+# Block aggressive crawlers
+User-agent: ia_archiver
+Disallow: /
+
+User-agent: Wayback
+Disallow: /
+
+# Block AI training bots (optional)
+User-agent: GPTBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+# Academic and research bots (allow for research purposes)
+User-agent: ia_archiver/heritrix
+Allow: /docs/
+Allow: /research/
+
+# Social media bots
+User-agent: facebookexternalhit/
+Allow: /
+
+User-agent: Twitterbot/
+Allow: /
+
+User-agent: LinkedInBot/
+Allow: /
+
+# SEO and monitoring bots
+User-agent: SemrushBot
+Crawl-delay: 5
+
+User-agent: AhrefsBot
+Crawl-delay: 5
+
+User-agent: MJ12bot
+Crawl-delay: 10
+
+# Host directive (if supported)
+# Host: airquality.monitor
