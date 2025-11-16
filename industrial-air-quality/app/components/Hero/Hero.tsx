@@ -195,7 +195,7 @@ export default function Hero(): React.JSX.Element {
   const handleExploreClick = useCallback(() => {
     
     // Navigate to interactive map
-    window.location.href = '/map';
+    window.location.href = '/Map';
   }, []);
 
   const handleDemoClick = useCallback(() => {

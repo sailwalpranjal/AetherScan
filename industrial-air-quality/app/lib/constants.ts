@@ -24,7 +24,7 @@ export const APP_METADATA: ApplicationMetadata = {
   description: 'Advanced industrial air quality monitoring with quantum-enhanced data processing',
   authors: ['Sriya Rawat', 'Prakriti Kimothi', 'Siddhant Dabral', 'Pranjal Sailwal'],
   license: 'MIT',
-  repository: 'https://github.com/air-quality-team/industrial-monitoring',
+  repository: 'https://github.com/sailwalpranjal/AetherScan',
 } as const;
 
 export const SUPERVISOR: Supervisor = {
@@ -54,7 +54,7 @@ export const CONTRIBUTORS: readonly Contributor[] = [
   {
     id: 'sriya-rawat',
     name: 'Sriya Rawat',
-    role: 'Project Lead & Data Scientist',
+    role: 'Frontend Developer & Data Engineer',
     section: 'G1',
     universityRollNo: '22012988',
     avatar: '/images/contributors/sriya-rawat.jpg',
@@ -91,7 +91,7 @@ export const CONTRIBUTORS: readonly Contributor[] = [
   {
     id: 'prakriti-kimothi',
     name: 'Prakriti Kimothi',
-    role: 'Full-Stack Developer & UI/UX Designer',
+    role: 'AI/ML Specialist',
     section: 'D1',
     universityRollNo: '2219256',
     avatar: '/images/contributors/prakriti-kimothi.jpg',
@@ -128,7 +128,7 @@ export const CONTRIBUTORS: readonly Contributor[] = [
   {
     id: 'siddhant-dabral',
     name: 'Siddhant Dabral',
-    role: 'Quantum Computing Researcher & Backend Developer',
+    role: 'UI/UX Designer & Video Editor',
     section: 'G1',
     universityRollNo: '2219714',
     avatar: '/images/contributors/siddhant-dabral.jpg',

@@ -28,8 +28,8 @@ const ctaOptions = [
     description: 'Experience real-time air quality monitoring with our interactive dashboard featuring satellite data and ML predictions.',
     icon: FiMapPin,
     action: 'primary',
-    href: '/map',
-    external: false
+    href: '/Map',
+    external: true
   },
   {
     id: 'demo',
@@ -46,7 +46,7 @@ const ctaOptions = [
     description: 'Access our open-source repository and contribute to advancing environmental monitoring technology.',
     icon: FiGithub,
     action: 'outline',
-    href: 'https://github.com/air-quality-team/industrial-monitoring',
+    href: 'https://github.com/sailwalpranjal/AetherScan',
     external: true
   }
 ] as const;
@@ -244,7 +244,7 @@ export default function CallToAction(): React.JSX.Element {
                 variant="ghost"
                 size="sm"
                 leftIcon={<FiStar />}
-                href="https://github.com/air-quality-team/industrial-monitoring"
+                href="https://github.com/sailwalpranjal/AetherScan"
                 target="_blank"
                 rel="noopener noreferrer"
               >

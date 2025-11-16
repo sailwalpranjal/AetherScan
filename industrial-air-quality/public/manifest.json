@@ -108,10 +108,10 @@
       "name": "Interactive Map",
       "short_name": "Map",
       "description": "View real-time air quality data on interactive map",
-      "url": "/map",
+      "url": "/Map",
       "icons": [
         {
-          "src": "/icons/map-shortcut-96x96.png",
+          "src": "/icons/Map-shortcut-96x96.png",
           "sizes": "96x96",
           "type": "image/png"
         }
@@ -170,7 +170,7 @@
   "related_applications": [
     {
       "platform": "web",
-      "url": "https://github.com/air-quality-team/industrial-monitoring",
+      "url": "https://github.com/sailwalpranjal/AetherScan",
       "id": "github-repository"
     }
   ],
