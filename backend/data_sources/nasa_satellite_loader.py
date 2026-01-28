@@ -6,8 +6,21 @@ import numpy as np
 from pathlib import Path
 from typing import List, Dict, Optional
 from config.settings import settings
-import h5py
-from netCDF4 import Dataset
+
+# Optional HDF5/NetCDF support - graceful degradation if unavailable
+try:
+    import h5py
+    H5PY_AVAILABLE = True
+except ImportError:
+    h5py = None
+    H5PY_AVAILABLE = False
+
+try:
+    from netCDF4 import Dataset
+    NETCDF4_AVAILABLE = True
+except ImportError:
+    Dataset = None
+    NETCDF4_AVAILABLE = False
 
 class NASASatelliteLoader:
     """Load and process NASA satellite data files"""

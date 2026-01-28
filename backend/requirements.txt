@@ -8,9 +8,13 @@ python-multipart==0.0.6
 
 # Data Processing - using versions with pre-built wheels
 numpy>=1.26.0,<2.0.0
-scipy>=1.11.0,<1.14.0
 pandas>=2.1.0,<3.0.0
 openpyxl==3.1.2
+
+# scipy is optional - used for KDTree performance improvement
+# Falls back to pure numpy implementation if unavailable
+# Uncomment if your platform supports it:
+# scipy>=1.11.0,<1.14.0
 
 # Geospatial
 rasterio>=1.3.0
@@ -38,6 +42,7 @@ pydantic-settings>=2.1.0
 # Quantum Computing (optional - may fail on some platforms)
 # qiskit==0.45.1
 
-# HDF5/NetCDF for NASA data (optional)
-h5py>=3.10.0
-netCDF4>=1.6.0
+# HDF5/NetCDF for NASA data (optional - may require HDF5 dev libraries)
+# Uncomment if your platform supports them:
+# h5py>=3.10.0
+# netCDF4>=1.6.0

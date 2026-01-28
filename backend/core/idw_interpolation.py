@@ -1,7 +1,40 @@
 import numpy as np
-from scipy.spatial import KDTree
 from typing import List, Tuple, Dict, Optional
 from config.settings import settings
+
+# Try to use scipy KDTree for performance, fall back to pure numpy if unavailable
+try:
+    from scipy.spatial import KDTree
+    SCIPY_AVAILABLE = True
+except ImportError:
+    SCIPY_AVAILABLE = False
+
+    class KDTree:
+        """Pure numpy fallback for KDTree when scipy is not available."""
+        def __init__(self, data):
+            self.data = np.asarray(data)
+
+        def query(self, x, k=1):
+            x = np.asarray(x)
+            if x.ndim == 1:
+                x = x.reshape(1, -1)
+
+            # Calculate all distances (brute force)
+            distances = np.sqrt(np.sum((self.data[np.newaxis, :, :] - x[:, np.newaxis, :]) ** 2, axis=2))
+
+            # Get k nearest neighbors
+            if k == 1:
+                indices = np.argmin(distances, axis=1)
+                min_distances = distances[np.arange(len(x)), indices]
+                return min_distances, indices
+            else:
+                indices = np.argpartition(distances, k, axis=1)[:, :k]
+                # Sort the k nearest by distance
+                row_indices = np.arange(len(x))[:, np.newaxis]
+                sorted_order = np.argsort(distances[row_indices, indices], axis=1)
+                indices = indices[row_indices, sorted_order]
+                min_distances = distances[row_indices, indices]
+                return min_distances, indices
 
 class IDWInterpolator:
     def __init__(self, power: float = None, smoothing: float = None, neighbors: int = None):

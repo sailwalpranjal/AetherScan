@@ -1,0 +1,36 @@
+# Render.com deployment configuration for AetherScan Backend
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: aetherscan-api
+    env: python
+    runtime: python-3.11.7
+    region: oregon
+    plan: free
+    branch: master
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.7"
+      - key: NASA_FIRMS_API_KEY
+        sync: false
+      - key: OPENWEATHER_API_KEY
+        sync: false
+      - key: OPENAQ_API_KEY
+        sync: false
+      - key: AQICN_API_TOKEN
+        sync: false
+      - key: NASA_EARTHDATA_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: DATABASE_PATH
+        value: "./cache/aetherscan.db"
+      - key: TILE_CACHE_DIR
+        value: "./cache/tiles"
+      - key: DATA_CACHE_DIR
+        value: "./cache/data"
