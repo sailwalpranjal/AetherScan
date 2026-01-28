@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     # API Settings
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
-    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+    CORS_ORIGINS: str = "*"  # Allow all origins by default for easier deployment
 
     # Data Source URLs
     OPENAQ_API_URL: str = "https://api.openaq.org/v3"
@@ -58,6 +58,8 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> List[str]:
+        if self.CORS_ORIGINS == "*":
+            return ["*"]
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
     def ensure_cache_dirs(self):
