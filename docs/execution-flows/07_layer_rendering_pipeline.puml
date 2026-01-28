@@ -1,0 +1,502 @@
+@startuml Layer Rendering Pipeline
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam linetype ortho
+
+title AetherScan - Complete Layer Rendering Pipeline
+
+|Frontend|
+start
+:User enables layer\nOR\nLayer auto-refresh triggered;
+
+:Identify layer type;
+note right
+  Layer categories
+  • Pollution (heatmaps, grids)
+  • Infrastructure (points, icons)
+  • Population (density, exposure)
+  • Satellite (rasters, contours)
+  • Environmental (fires, temperature)
+end note
+
+split
+  note left
+    Heatmap Layers (Pollution/Density)
+  end note
+  |components/Layers/PollutionHeatmap.tsx|
+  :Request: GET /layers/pollution-heatmap;
+  :Input: bounds, date, resolution;
+
+    |routes/layers.py|
+    :Route handler: get_pollution_heatmap();
+
+    |layers/pollution_heatmap.py|
+    :Function: generate_pollution_heatmap();
+
+    :Query database for measurements;
+    |db/database.py|
+    :SELECT * FROM openaq_measurements\nWHERE date_utc BETWEEN ? AND ?\nAND latitude BETWEEN ? AND ?\nAND longitude BETWEEN ? AND ?;
+
+    :Group by location;
+    :Average pollutant values;
+    :Output: List of station measurements;
+    note right
+      [
+        {
+          lat: 28.6, lon: 77.2,
+          pm25: 45, pm10: 88, ...
+        },
+        ...
+      ]
+    end note
+
+    |core/idw_interpolation.py|
+    :Function: interpolate_idw();
+    :Input: points, values, grid, power, radius;
+
+    :Create target grid;
+    note right
+      Grid parameters
+      • Resolution - 0.1deg (~11km)
+      • Bounds - India (6-37degN, 68-98degE)
+      • Grid size - 310x310 cells
+    end note
+
+    :Loop through grid cells;
+    repeat
+      :Get grid cell center (lat, lon);
+
+      :Find stations within radius;
+      note right
+        Haversine distance:        d = 2*R*arcsin(sqrt(
+          sin²((lat2-lat1)/2) +
+          cos(lat1)*cos(lat2)*
+          sin²((lon2-lon1)/2)
+        ))
+        R = 6371 km
+      end note
+
+      if (Stations found?) then (yes)
+        :Calculate IDW weights;
+        note right
+          IDW formula:          weight_i = 1 / (distance_i ^ power)
+
+          where power = 2.0 (from config)
+
+          Normalization:          normalized_weight_i =
+            weight_i / sum(all weights)
+        end note
+
+        :Compute weighted average;
+        note right
+          interpolated_value =
+            Σ(value_i * weight_i) /
+            Σ(weight_i)
+        end note
+
+        :Store in grid cell;
+      else (no)
+        :Mark as NoData (-9999);
+      endif
+
+    repeat while (More grid cells?) is (yes)
+
+    :Output: Interpolated grid array;
+    note right
+      numpy.ndarray shape: (310, 310)
+      dtype: float32
+      nodata: -9999
+    end note
+
+    :Convert grid to GeoJSON;
+    note right
+      GeoJSON FeatureCollection:      {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [lon, lat]
+            },
+            "properties": {
+              "value": 45.2,
+              "aqi": 124,
+              "category": "Moderate"
+            }
+          },
+          ...
+        ]
+      }
+    end note
+
+    :Apply quantum spatial optimization;
+    |quantum/processor.py|
+    :Enhance interpolation accuracy;
+    :Smooth spatial transitions;
+    :Detect pattern anomalies;
+    note right
+      Quantum enhancement
+      • Refines grid values
+      • Optimizes spatial continuity
+      • Improves visualization quality
+    end note
+
+    :Apply color mapping;
+    note right
+      AQI color scale
+      • 0-50 - Green (#00E400)
+      • 51-100 - Yellow (#FFFF00)
+      • 101-150 - Orange (#FF7E00)
+      • 151-200 - Red (#FF0000)
+      • 201-300 - Purple (#8F3F97)
+      • 301+ - Maroon (#7E0023)
+    end note
+
+    |routes/layers.py|
+    :Return JSON response;
+
+    |components/Layers/PollutionHeatmap.tsx|
+    :Receive GeoJSON data;
+
+    :Create Deck.gl HeatmapLayer;
+    note right
+      new HeatmapLayer({
+        id: 'pollution-heatmap',
+        data: geoJsonData,
+        getPosition: d => d.geometry.coordinates,
+        getWeight: d => d.properties.value,
+        aggregation: 'SUM',
+        radiusPixels: 50,
+        intensity: 1,
+        threshold: 0.03,
+        colorRange: aqiColorScale,
+        opacity: 0.7
+      })
+    end note
+
+    :Add layer to DeckGL overlay;
+
+    |BaseMap.tsx|
+    :Render HeatmapLayer;
+    :Output: Visual heatmap on map;
+    detach
+
+split again
+  note left
+    Point Layers (Sensors/Industries/Fires)
+  end note
+  |components/Layers/OpenAQSensors.tsx|
+  :Request: GET /layers/sensors;
+
+    |routes/layers.py|
+    :Query database for stations;
+    :SELECT * FROM openaq_stations\nWHERE latitude BETWEEN ? AND ?;
+
+    :Format as GeoJSON points;
+    note right
+      {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [77.2, 28.6]
+            },
+            "properties": {
+              "name": "Station Name",
+              "sensor_type": "GRIM",
+              "last_updated": "2026-01-09T10:00:00Z"
+            }
+          }
+        ]
+      }
+    end note
+
+    :Return JSON;
+
+    |components/Layers/OpenAQSensors.tsx|
+    :Create Deck.gl ScatterplotLayer;
+    note right
+      new ScatterplotLayer({
+        id: 'sensors',
+        data: geoJsonData.features,
+        getPosition: d => d.geometry.coordinates,
+        getRadius: d => 1000,
+        getFillColor: [0, 150, 255, 200],
+        pickable: true,
+        radiusMinPixels: 5,
+        radiusMaxPixels: 20,
+        onClick: handleSensorClick
+      })
+    end note
+
+    :Render ScatterplotLayer;
+    :Output: Sensor markers on map;
+    detach
+
+split again
+  note left
+    Raster Tile Layers (Satellite/Climate)
+  end note
+  |components/Layers/SatelliteAOD.tsx|
+    :Request: GET /tiles/aod/{z}/{x}/{y}.png;
+    :Input: Tile coordinates (z, x, y);
+
+    |routes/tiles.py|
+    :Route handler: get_tile(z, x, y, layer_type);
+
+    |core/tile_generator.py|
+    :Function: generate_tile();
+
+    :Check tile cache;
+    note right
+      Cache key:      hash = sha256(f"{layer_type}_{z}_{x}_{y}")
+      path = cache/tiles/{hash}.png
+    end note
+
+    if (Tile cached?) then (yes)
+      :Read PNG from cache;
+      :Return cached tile;
+      detach
+
+    else (no)
+      :Calculate tile bounds;
+      note right
+        Web Mercator conversion:
+        n = 2^z
+        lon_min = x/n * 360 - 180
+        lat_min = arctan(sinh(π(1 - 2*y/n)))
+          * 180/π
+        lon_max = (x+1)/n * 360 - 180
+        lat_max = arctan(sinh(π(1 - 2*(y+1)/n)))
+          * 180/π
+
+        tile_bounds = [
+          lon_min, lat_min,
+          lon_max, lat_max
+        ]
+      end note
+
+      :Load source raster data;
+      |data_sources/nasa_satellite_loader.py|
+      :Read GeoTIFF with rasterio;
+      :Clip to tile bounds;
+
+      :Reproject to Web Mercator (EPSG:3857);
+      note right
+        Using rasterio.warp.reproject()
+      end note
+
+      :Resample to 256x256 pixels;
+
+      :Apply color mapping;
+      note right
+        AOD color scale:        • 0-0.2: Light blue
+        • 0.2-0.5: Yellow
+        • 0.5-1.0: Orange
+        • 1.0+: Red
+      end note
+
+      :Create PIL Image;
+      note right
+        from PIL import Image
+        img = Image.fromarray(
+          colored_array,
+          mode='RGBA'
+        )
+      end note
+
+      :Save PNG to cache;
+      :Return PNG tile;
+    endif
+
+    |components/Layers/SatelliteAOD.tsx|
+    :Create TileLayer;
+    note right
+      new TileLayer({
+        id: 'satellite-aod',
+        data: null,
+        getTileData: ({x, y, z}) =>
+          fetch(`/tiles/aod/${z}/${x}/${y}.png`),
+        renderSubLayers: props => {
+          return new BitmapLayer({
+            ...props,
+            image: props.data,
+            bounds: tileToBounds(props.tile)
+          })
+        },
+        opacity: 0.6
+      })
+    end note
+
+    :Render TileLayer;
+    :Output: Satellite raster overlay;
+    detach
+
+split again
+  note left
+    Vector Layers (Boundaries/Zones)
+  end note
+  |components/Layers/MiningZones.tsx|
+    :Request: GET /layers/mining-zones;
+
+    |routes/layers.py|
+    :Load vector data (GeoJSON/Shapefile);
+    |data_sources/ogd_india_loader.py|
+    :Read with geopandas;
+    :Filter by bounds;
+
+    :Convert to GeoJSON;
+    note right
+      {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [[[...]]]
+            },
+            "properties": {
+              "name": "Mining Zone",
+              "type": "Coal",
+              "area_km2": 150
+            }
+          }
+        ]
+      }
+    end note
+
+    :Return JSON;
+
+    |components/Layers/MiningZones.tsx|
+    :Create Deck.gl PolygonLayer;
+    note right
+      new PolygonLayer({
+        id: 'mining-zones',
+        data: geoJsonData.features,
+        getPolygon: d => d.geometry.coordinates,
+        getFillColor: [255, 140, 0, 100],
+        getLineColor: [255, 100, 0],
+        getLineWidth: 2,
+        pickable: true,
+        stroked: true,
+        filled: true,
+        wireframe: true
+      })
+    end note
+
+    :Render PolygonLayer;
+    :Output: Polygon boundaries on map;
+    detach
+
+split again
+  note left
+    Time-Series Layers (Trends/Evolution)
+  end note
+  |components/Layers/TrendEvolution.tsx|
+    :Request: GET /layers/trend-evolution;
+    :Input: bounds, date_range;
+
+    |routes/layers.py|
+    :Query time-series data;
+    :SELECT date, location, aqi\nFROM measurements\nWHERE date BETWEEN ? AND ?\nGROUP BY date, location;
+
+    |layers/trend_evolution.py|
+    :Calculate trend statistics;
+    note right
+      For each location
+      • Moving average (7-day)
+      • Linear regression
+      • Trend direction (up/down/stable)
+      • Rate of change
+    end note
+
+    :Generate animation frames;
+    note right
+      One frame per day
+      • Day 1 - AQI distribution
+      • Day 2 - AQI distribution
+      • ...
+      • Day N - AQI distribution
+
+      With interpolation between frames
+    end note
+
+    :Return time-series JSON;
+
+    |components/Layers/TrendEvolution.tsx|
+    :Create animated Deck.gl layers;
+    :Use time slider value for frame selection;
+
+    :Create ColumnLayer with height = AQI;
+    note right
+      new ColumnLayer({
+        id: 'trend-evolution',
+        data: frameData[currentTime],
+        getPosition: d => [d.lon, d.lat],
+        getElevation: d => d.aqi * 100,
+        getFillColor: d => getAQIColor(d.aqi),
+        elevationScale: 50,
+        radius: 5000,
+        extruded: true
+      })
+    end note
+
+    :Render animated layer;
+    :Update on time slider change;
+    :Output: 3D animated trend visualization;
+    detach
+
+end split
+
+|BaseMap.tsx|
+:Aggregate all active layers;
+:Update DeckGL overlay;
+note right
+  <DeckGL
+    viewState={viewState}
+    controller={true}
+    layers={allActiveLayers}
+    onViewStateChange={handleViewChange}
+  >
+    <Map
+      mapStyle={basemapStyle}
+    />
+  </DeckGL>
+end note
+
+:Render complete map visualization;
+
+|Browser|
+:Display layered map\nwith all active overlays;
+
+note right
+  Layer Rendering Performance
+
+  Optimization techniques
+  • Tile-based rendering for large rasters
+  • Level-of-detail LOD for different zoom levels
+  • Data decimation for distant views
+  • GPU acceleration with Deck.gl WebGL
+  • Request batching
+  • Progressive loading
+  • Viewport culling
+
+  Rendering order from bottom to top
+  1. Base map with MapLibre GL
+  2. Tile layers satellite and climate
+  3. Polygon layers boundaries
+  4. Heatmap layers pollution
+  5. Column layers 3D trends
+  6. Point layers sensors and industries
+  7. Icon layers markers
+  8. Text layers labels
+end note
+
+stop
+
+@enduml

@@ -1,0 +1,539 @@
+@startuml Data Source Integration Flow
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam linetype ortho
+
+title AetherScan - External Data Source Integration Flow
+
+|Backend|
+start
+
+partition "Data Loading Trigger" {
+  :API request received\nOR\nScheduled refresh\nOR\nCache expiry;
+}
+
+:Determine required data source;
+
+split
+  partition "1. AQICN Service (Primary AQI)" {
+    |data_sources/aqicn_service.py|
+    :Class: AQICNService;
+
+    :Input: lat, lon;
+
+    :Build request URL;
+    note right
+      https://api.waqi.info/feed/geo:{lat};{lon}/
+      ?token={AQICN_API_KEY}
+    end note
+
+    :async with aiohttp.get(url, timeout=10);
+
+    if (Response 200?) then (yes)
+      :Parse JSON response;
+      note right
+        Response structure:        {
+          "status": "ok",
+          "data": {
+            "aqi": 156,
+            "idx": 12345,
+            "city": {
+              "name": "Delhi",
+              "geo": [28.6, 77.2]
+            },
+            "time": {
+              "s": "2026-01-09 10:00:00",
+              "tz": "+05:30"
+            },
+            "iaqi": {
+              "pm25": {"v": 45},
+              "pm10": {"v": 88},
+              "no2": {"v": 32},
+              "so2": {"v": 15},
+              "co": {"v": 1.2},
+              "o3": {"v": 28}
+            },
+            "forecast": {
+              "daily": {
+                "pm25": [...],
+                "pm10": [...]
+              }
+            }
+          }
+        }
+      end note
+
+      :Extract data fields;
+      :Format to internal schema;
+      :Output: AQIResult object;
+      note right
+        {
+          aqi: int,
+          pollutants: dict,
+          station: dict,
+          timestamp: str,
+          source: "aqicn",
+          forecast: optional
+        }
+      end note
+      detach
+
+    else (no)
+      :Log error;
+      :Return None;
+      detach
+    endif
+  }
+
+split again
+  partition "2. OpenAQ Service (Fallback AQI)" {
+    |data_sources/openaq_loader.py|
+    :Class: OpenAQLoader;
+
+    :Input: lat, lon, radius (default 25km);
+
+    :Build request URL;
+    note right
+      https://api.openaq.org/v2/latest
+      ?coordinates={lat},{lon}
+      &radius=25000
+      &limit=10
+      &order_by=distance
+    end note
+
+    :async with aiohttp.get(url);
+
+    if (Response 200?) then (yes)
+      :Parse JSON response;
+      note right
+        Response structure:        {
+          "results": [
+            {
+              "location": "Station Name",
+              "city": "Delhi",
+              "coordinates": {
+                "latitude": 28.6,
+                "longitude": 77.2
+              },
+              "measurements": [
+                {
+                  "parameter": "pm25",
+                  "value": 45.2,
+                  "unit": "ug/m3",
+                  "lastUpdated": "2026-01-09T10:00:00Z"
+                },
+                ...
+              ]
+            }
+          ]
+        }
+      end note
+
+      :Extract measurements;
+      :Group by parameter;
+      :Average values if multiple stations;
+
+      :Store in database;
+      |db/database.py|
+      :INSERT INTO openaq_stations;
+      :INSERT INTO openaq_measurements;
+
+      :Output: Raw measurements dict;
+      note right
+        {
+          "pm25": 45.2,
+          "pm10": 88.1,
+          "no2": 32.5,
+          "so2": 15.3,
+          "co": 1.2,
+          "o3": 28.7
+        }
+      end note
+      detach
+
+    else (no)
+      :Log error;
+      :Return None;
+      detach
+    endif
+  }
+
+split again
+  partition "3. NASA FIRMS (Fire Detection)" {
+    |data_sources/nasa_firms_loader.py|
+    :Class: NASAFIRMSLoader;
+
+    :Input: bounds (min_lat, max_lat, min_lon, max_lon), days;
+
+    :Build request URL;
+    note right
+      https://firms.modaps.eosdis.nasa.gov/api/
+      area/csv/{MAP_KEY}/VIIRS_SNPP_NRT/
+      {min_lon},{min_lat},{max_lon},{max_lat}/
+      {days}
+    end note
+
+    :async with aiohttp.get(url);
+
+    if (Response 200?) then (yes)
+      :Parse CSV response;
+      note right
+        CSV columns:        latitude,longitude,brightness,
+        scan,track,acq_date,acq_time,
+        satellite,confidence,version,
+        bright_t31,frp,daynight
+      end note
+
+      :Filter by confidence (>70%);
+      :Filter by brightness threshold;
+      :Calculate fire density grid;
+
+      :Cache to file;
+      note right
+        Path: cache/data/firms_{date}.csv
+      end note
+
+      :Output: List of fire points;
+      note right
+        [
+          {
+            lat: 28.5,
+            lon: 77.3,
+            brightness: 325.4,
+            frp: 12.5,
+            confidence: 85,
+            acq_date: "2026-01-09",
+            acq_time: "1030"
+          },
+          ...
+        ]
+      end note
+      detach
+
+    else (no)
+      :Log error;
+      :Return empty list;
+      detach
+    endif
+  }
+
+split again
+  partition "4. NASA Satellite Data (AERDB/AIRS/OMI)" {
+    |data_sources/nasa_satellite_loader.py|
+    :Class: NASASatelliteLoader;
+
+    :Input: bounds, date, product;
+
+    if (Product == "AERDB") then
+      :AOD (Aerosol Optical Depth);
+      :URL: https://ladsweb.modaps.eosdis.nasa.gov/;
+      :Product: AERDB_L2_VIIRS_SNPP;
+
+    elseif (Product == "AIRS") then
+      :Temperature data;
+      :URL: https://airs.jpl.nasa.gov/;
+      :Product: AIRS Level 2;
+
+    elseif (Product == "OMI") then
+      :NO2 column density;
+      :URL: https://avdc.gsfc.nasa.gov/;
+      :Product: OMI-Aura_L2_OMNO2;
+    endif
+
+    :Download HDF5/NetCDF file;
+    :Parse using h5py/netCDF4;
+    :Extract geospatial bands;
+    note right
+      Extract:
+      • Latitude grid
+      • Longitude grid
+      • Data values
+      • Quality flags
+    end note
+
+    :Reproject to WGS84;
+    :Clip to bounds;
+    :Resample to target resolution;
+
+    :Cache processed raster;
+    note right
+      Path: cache/data/{product}_{date}.tif
+      Format: GeoTIFF
+    end note
+
+    :Output: Raster array + metadata;
+    note right
+      {
+        data: numpy.ndarray,
+        bounds: [minx, miny, maxx, maxy],
+        crs: "EPSG:4326",
+        resolution: [dx, dy],
+        nodata: -9999
+      }
+    end note
+    detach
+  }
+
+split again
+  partition "5. OpenWeather API (Meteorology)" {
+    |data_sources/openweather_loader.py|
+    :Class: OpenWeatherLoader;
+
+    :Input: lat, lon;
+
+    :Build request URL;
+    note right
+      https://api.openweathermap.org/data/2.5/
+      weather?lat={lat}&lon={lon}
+      &appid={OPENWEATHER_API_KEY}
+      &units=metric
+    end note
+
+    :async with aiohttp.get(url);
+
+    if (Response 200?) then (yes)
+      :Parse JSON response;
+      note right
+        {
+          "main": {
+            "temp": 18.5,
+            "feels_like": 17.2,
+            "humidity": 65,
+            "pressure": 1013
+          },
+          "wind": {
+            "speed": 3.5,
+            "deg": 270
+          },
+          "clouds": {"all": 40},
+          "weather": [
+            {"main": "Clouds", "description": "..."}
+          ]
+        }
+      end note
+
+      :Output: Weather data;
+      detach
+
+    else (no)
+      :Return None;
+      detach
+    endif
+  }
+
+split again
+  partition "6. OSM Nominatim (Geocoding)" {
+    |data_sources/osm_overpass_loader.py|
+    :Class: OSMLoader;
+
+    :Input: location query OR lat/lon;
+
+    if (Search by name) then
+      :URL: nominatim.openstreetmap.org/search;
+      note right
+        ?q={query}
+        &format=json
+        &countrycodes=in
+        &limit=5
+      end note
+
+    else (Reverse geocode)
+      :URL: nominatim.openstreetmap.org/reverse;
+      note right
+        ?lat={lat}&lon={lon}
+        &format=json
+      end note
+    endif
+
+    :async with aiohttp.get(url);
+
+    :Parse JSON response;
+    :Output: Location data;
+    note right
+      [
+        {
+          "display_name": "Delhi, India",
+          "lat": "28.6139",
+          "lon": "77.2090",
+          "boundingbox": [...]
+        }
+      ]
+    end note
+    detach
+  }
+
+split again
+  partition "7. WorldClim (Climate Data)" {
+    |data_sources/worldclim_loader.py|
+    :Class: WorldClimLoader;
+
+    :Input: variable (bio1-bio19), bounds;
+
+    :Check cache directory;
+    note right
+      cache/data/worldclim/
+    end note
+
+    if (File exists?) then (yes)
+      :Load cached GeoTIFF;
+    else (no)
+      :Download from WorldClim;
+      note right
+        https://biogeo.ucdavis.edu/data/
+        worldclim/v2.1/base/
+        wc2.1_10m_bio_{var}.zip
+      end note
+      :Unzip and save;
+    endif
+
+    :Open with rasterio;
+    :Clip to India bounds;
+    :Read data array;
+    :Output: Raster data;
+    detach
+  }
+
+split again
+  partition "8. WorldPop (Population)" {
+    |data_sources/worldpop_loader.py|
+    :Class: WorldPopLoader;
+
+    :Input: country, year, bounds;
+
+    :Check cache;
+
+    if (File exists?) then (yes)
+      :Load cached GeoTIFF;
+    else (no)
+      :Download from WorldPop;
+      note right
+        https://data.worldpop.org/GIS/
+        Population/Global_2000_2020/
+        {year}/IND/ind_ppp_{year}_1km_Aggregated.tif
+      end note
+      :Save to cache;
+    endif
+
+    :Open with rasterio;
+    :Clip to bounds;
+    :Resample if needed;
+    :Output: Population density grid;
+    detach
+  }
+
+split again
+  partition "9. Global Power Plant DB (Infrastructure)" {
+    |data_sources/global_power_plant_loader.py|
+    :Class: PowerPlantLoader;
+
+    :Input: country, bounds;
+
+    :Check cache;
+
+    if (File exists?) then (yes)
+      :Load cached CSV;
+    else (no)
+      :Download database;
+      note right
+        https://datasets.wri.org/dataset/
+        globalpowerplantdatabase
+      end note
+      :Save to cache/data/power_plants/;
+    endif
+
+    :Read CSV with pandas;
+    :Filter by country = "IND";
+    :Filter by bounds;
+    :Filter by capacity > threshold;
+
+    :Output: Power plant list;
+    note right
+      [
+        {
+          name: str,
+          lat: float,
+          lon: float,
+          capacity_mw: float,
+          primary_fuel: str,
+          commissioning_year: int
+        }
+      ]
+    end note
+    detach
+  }
+
+split again
+  partition "10-13. Other Sources" {
+    :OGD India (government data);
+    :Census data (demographics);
+    :Bhuvan (NRSC satellite);
+    :NASA POWER (climate);
+    note right
+      Similar patterns:
+      • Check cache
+      • Download if needed
+      • Parse format
+      • Filter/process
+      • Return structured data
+    end note
+    detach
+  }
+
+end split
+
+|Backend|
+:Aggregate data from sources;
+:Merge and deduplicate;
+:Apply quality checks;
+
+:Apply quantum preprocessing;
+|quantum/processor.py|
+:Optimize data patterns;
+:Enhance spatial correlation;
+:Refine temporal trends;
+note right
+  Quantum optimization:
+  • Pattern recognition
+  • Anomaly detection
+  • Data quality enhancement
+end note
+
+:Cache merged result;
+
+:Return data to API route;
+note right
+  Caching strategy
+  • In-memory - 5 minutes
+  • File cache - 1 hour
+  • Database - Persistent
+
+  Cache keys
+  • AQICN - hash(lat, lon, timestamp)
+  • Layers - hash(layer_id, bounds, date)
+  • Tiles - hash(z, x, y, layer_type)
+end note
+
+note right
+  Data Flow Summary
+  External API -> Loader -> Parser -> Validator ->
+  Cache -> Database -> API Route -> Response
+
+  Error Handling
+  • Retry logic with 3 attempts
+  • Fallback sources
+  • Cached stale data on failure
+  • Graceful degradation
+  • Error logging
+
+  Rate Limiting
+  • AQICN - 1000 req/day
+  • OpenAQ - Unlimited
+  • NASA - 10 req/sec
+  • OpenWeather - 60 req/min
+  • Nominatim - 1 req/sec
+end note
+
+stop
+
+@enduml

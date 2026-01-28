@@ -1,0 +1,416 @@
+@startuml Frontend Startup Flow
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam linetype ortho
+
+title AetherScan Frontend - Complete Startup Execution Flow\n(Entry: page.tsx)
+
+|User|
+start
+:Open browser\nNavigate to:\nhttp://localhost:3000;
+
+|Next.js Server|
+:Receive HTTP request;
+:Route resolution;
+
+|app/layout.tsx|
+:Render RootLayout component;
+:Set HTML metadata;
+note right
+  <html lang="en">
+  <head>
+    <title>AetherScan</title>
+    <meta charset="utf-8" />
+    <meta viewport="..." />
+    <link rel="icon" />
+  </head>
+end note
+
+:Load global CSS\n(globals.css, theme.css);
+:Apply Tailwind styles;
+:Wrap children in layout\n//Output: HTML structure//;
+
+|app/page.tsx|
+:Initialize Home component;
+note right
+  **Component type:**
+  'use client' (React Client Component)
+
+  **Framework:**
+  Next.js 14 App Router
+  React 18 with TypeScript
+end note
+
+partition "State Initialization" {
+  :useState for map view;
+  note right
+    **Initial view state:**
+    {
+      longitude: 78.9629,
+      latitude: 20.5937,
+      zoom: 5,
+      pitch: 0,
+      bearing: 0
+    }
+
+    (Center of India)
+  end note
+
+  :useState for AQI data;
+  note right
+    aqiData: AQIResult | null = null
+  end note
+
+  :useState for selected location;
+  note right
+    selectedLocation: Coordinates | null
+  end note
+
+  :useState for active layers;
+  note right
+    **Default layers enabled:**
+    {
+      pollutionHeatmap: true,
+      stateHeatmap: false,
+      dynamicAQI: false,
+      sensors: false,
+      industries: false,
+      powerPlants: false,
+      refineries: false,
+      populationDensity: false,
+      populationExposure: false,
+      fires: false,
+      satelliteIndicators: false,
+      ...
+    }
+  end note
+
+  :useState for layer opacity;
+  note right
+    layerOpacity: Record<string, number>
+    Default: 0.7 for all layers
+  end note
+
+  :useState for loading states;
+  note right
+    isLoadingAQI: boolean
+    isLoadingLayers: boolean
+  end note
+
+  :useState for time slider;
+  note right
+    selectedDate: Date = new Date()
+    timeRange: [Date, Date]
+  end note
+
+  :useState for UI panels;
+  note right
+    showLayerPanel: boolean
+    showInfoPanel: boolean
+    showSearch: boolean
+  end note
+}
+
+partition "useEffect - Component Mount" {
+  :Execute useEffect([]);
+  note right
+    Runs once on component mount
+  end note
+
+  fork
+    :Preload map data;
+    |lib/api.ts|
+    :Initialize axios client;
+    note right
+      **Base config:**
+      baseURL: "http://localhost:8000"
+      timeout: 30000
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    end note
+
+    :Fetch initial layer configs;
+    :layersAPI.getAvailableLayers();
+    note right
+      GET /layers/list
+      Returns: Layer metadata
+    end note
+
+  fork again
+    :Initialize keyboard shortcuts;
+    |hooks/useKeyboardShortcuts.ts|
+    :useEffect - add event listeners;
+    note right
+      **Shortcuts:**
+      • Ctrl+L: Toggle layer panel
+      • Ctrl+I: Toggle info panel
+      • Ctrl+S: Focus search
+      • Esc: Close panels
+      • 1-9: Toggle layer visibility
+    end note
+
+  fork again
+    :Check localStorage for saved state;
+    note right
+      Load:
+      • Last viewed location
+      • Layer preferences
+      • Bookmarked locations
+    end note
+
+  fork again
+    :Set up WebSocket (if enabled);
+    note right
+      For real-time updates:
+      • Live AQI changes
+      • Fire alerts
+      • Sensor status updates
+    end note
+  end fork
+
+  :Mark component as mounted\n//Output: Ready for user interaction//;
+}
+
+|React Rendering|
+:Render component tree;
+
+partition "Component Structure" {
+  :<div className="h-screen w-screen">;
+
+  fork
+    :Render **<ModernHeader />**;
+    |components/UI/ModernHeader.tsx|
+    :Display logo, title, navigation;
+    :Render theme toggle;
+    :Render user menu (if auth enabled);
+    note right
+      Fixed position: top
+      z-index: 1000
+    end note
+
+  fork again
+    :Render **<ModernSearch />**;
+    |components/UI/ModernSearch.tsx|
+    :Initialize search input;
+    :Set up debounced search handler;
+    note right
+      Position: top-right
+      z-index: 999
+
+      Features:
+      • Auto-complete
+      • Recent searches
+      • Location suggestions
+    end note
+
+  fork again
+    :Render **<BaseMap />**;
+    |components/Map/BaseMap.tsx|
+    :Dynamic import MapLibre GL;
+    note right
+      next/dynamic import
+      with loading fallback
+    end note
+
+    partition "Map Initialization" {
+      :Create MapLibre instance;
+      :Set basemap style;
+      note right
+        **Free basemap options:**
+        • Carto Positron (default)
+        • Carto Dark Matter
+        • OSM Bright
+        • OSM Liberty
+
+        Style URL from settings
+      end note
+
+      :Apply initial view state;
+      :Set bounds to India;
+      note right
+        Max bounds:
+        SW: [68degE, 6degN]
+        NE: [98degE, 37degN]
+      end note
+
+      :Enable controls;
+      note right
+        • Navigation control
+        • Scale control
+        • Geolocate control
+        • Fullscreen control
+      end note
+
+      :Register event handlers;
+      note right
+        **Events:**
+        • onClick: Fetch AQI at location
+        • onMove: Update view state
+        • onLoad: Trigger layer loading
+        • onError: Error handling
+      end note
+
+      :Map loaded\n//Output: Interactive map//;
+    }
+
+  fork again
+    :Render **<LayerManager />**;
+    |components/Map/LayerManager.tsx|
+    :Display layer controls;
+    note right
+      27 layer toggles with:
+      • Visibility checkbox
+      • Opacity slider
+      • Info tooltip
+      • Load status indicator
+    end note
+
+  fork again
+    :Render **<Legend />**;
+    |components/Map/Legend.tsx|
+    :Generate dynamic legend;
+    note right
+      Based on active layers:
+      • AQI color scale
+      • Population density scale
+      • Fire intensity scale
+      • Pollutant concentration ranges
+    end note
+
+  fork again
+    :Render **<TimeSlider />**;
+    |components/Map/TimeSlider.tsx|
+    :Initialize date range picker;
+    note right
+      For temporal layers:
+      • Trend evolution
+      • Historical AQI
+      • Fire progression
+      • Time-series analysis
+    end note
+
+  fork again
+    if (aqiData != null) then (yes)
+      :Render **<AQIInfoPanel />**;
+      |components/UI/AQIInfoPanel.tsx|
+      :Display AQI information;
+      note right
+        Shows:
+        • AQI value & category
+        • Dominant pollutant
+        • Health recommendations
+        • Station details
+        • Forecast (if available)
+      end note
+    endif
+
+  fork again
+    if (showLayerPanel) then (yes)
+      :Render **<ModernLayerManager />**;
+      |components/UI/ModernLayerManager.tsx|
+      :Display full layer panel;
+      note right
+        Organized by category:
+        • Pollution Layers (5)
+        • Environmental (6)
+        • Infrastructure (3)
+        • Population (3)
+        • Satellite (5)
+        • Validation (2)
+      end note
+    endif
+
+  fork again
+    :Render **<LoadingSpinner />**;
+    |components/UI/LoadingSpinner.tsx|
+    if (isLoadingAQI || isLoadingLayers) then (yes)
+      :Show loading overlay;
+    endif
+  end fork
+
+  :</div>;
+}
+
+partition "Layer Components - Dynamic Loading" {
+  :Check activeLayers state;
+
+  fork
+    if (activeLayers.pollutionHeatmap) then (yes)
+      :Load **<PollutionHeatmap />**;
+      |components/Layers/PollutionHeatmap.tsx|
+      :Fetch heatmap data:\nlayersAPI.getPollutionHeatmap();
+      :Render HeatmapLayer (Deck.gl);
+      note right
+        Layer type: HeatmapLayer
+        Data: GeoJSON points
+        Intensity: AQI value
+        Color range: Green->Red
+      end note
+    endif
+
+  fork again
+    if (activeLayers.dynamicAQI) then (yes)
+      :Load **<DynamicAQI />**;
+      :Fetch real-time AQI grid;
+      :Render GridLayer (Deck.gl);
+    endif
+
+  fork again
+    if (activeLayers.sensors) then (yes)
+      :Load **<OpenAQSensors />**;
+      :Fetch sensor locations;
+      :Render ScatterplotLayer (Deck.gl);
+    endif
+
+  fork again
+    if (activeLayers.industries) then (yes)
+      :Load **<IndustryOverlay />**;
+      :Fetch industry data;
+      :Render IconLayer (Deck.gl);
+    endif
+
+  fork again
+    if (activeLayers.fires) then (yes)
+      :Load **<CropBurning />**;
+      :Fetch NASA FIRMS fire data;
+      :Render HexagonLayer (Deck.gl);
+    endif
+
+  fork again
+    :... (22 more layer components);
+  end fork
+
+  note right
+    **Deck.gl Layers Used:**
+    • HeatmapLayer
+    • GridLayer
+    • ScatterplotLayer
+    • IconLayer
+    • HexagonLayer
+    • PathLayer
+    • PolygonLayer
+    • ContourLayer
+    • ColumnLayer
+    • TextLayer
+  end note
+}
+
+|Browser|
+:Render complete UI;
+:Display interactive map\nwith active layers\n//Output: Visual interface//;
+
+:Wait for user interaction;
+note right
+  Application ready for:
+  • Map clicks
+  • Search queries
+  • Layer toggles
+  • Time navigation
+  • Keyboard shortcuts
+end note
+
+stop
+
+@enduml

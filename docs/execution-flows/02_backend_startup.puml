@@ -1,0 +1,221 @@
+@startuml Backend Startup Flow
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam linetype ortho
+
+title AetherScan Backend - Complete Startup Execution Flow
+
+|System|
+start
+:Process invoked:\npython -m uvicorn main:app --reload;
+
+|main.py|
+:Import dependencies;
+note right
+  fastapi, uvicorn, asyncio
+  routes modules
+  config.settings
+  db.database
+  data_sources
+end note
+
+:Create FastAPI instance:\napp = FastAPI();
+
+|config/settings.py|
+:Load Settings class;
+:Read environment variables from .env;
+note right
+  Config loaded:
+  AQICN_API_KEY
+  OPENAQ_API_KEY
+  NASA_FIRMS_API_KEY
+  OPENWEATHER_API_KEY
+  DATABASE_PATH
+  TILE_CACHE_DIR
+  INDIA_BOUNDS
+  IDW_POWER
+  IDW_RADIUS
+  CORS_ORIGINS
+end note
+:Return Settings object;
+
+|main.py|
+:Store settings in app.state.settings;
+
+:Add CORS middleware;
+note right
+  CORSMiddleware config:
+  allow_origins
+  allow_credentials
+  allow_methods
+  allow_headers
+end note
+
+:Define lifespan context manager;
+note right
+  Async context manager for
+  startup and shutdown lifecycle
+end note
+
+|Lifespan - Startup|
+fork
+  :Call db.init_database();
+  |db/database.py|
+  :Check if DB file exists;
+  if (Database exists?) then (yes)
+    :Connect to SQLite;
+  else (no)
+    :Create new SQLite DB file;
+  endif
+
+  :Open async connection with aiosqlite;
+
+  :Execute CREATE TABLE IF NOT EXISTS openaq_stations;
+  note right
+    Columns:
+    id PRIMARY KEY
+    location_id TEXT UNIQUE
+    name TEXT
+    latitude REAL
+    longitude REAL
+    city TEXT
+    country TEXT
+    entity TEXT
+    sensor_type TEXT
+    last_updated DATETIME
+    created_at DATETIME
+  end note
+
+  :Execute CREATE TABLE IF NOT EXISTS openaq_measurements;
+  note right
+    Columns:
+    id PRIMARY KEY
+    location_id TEXT
+    parameter TEXT
+    value REAL
+    unit TEXT
+    date_utc DATETIME
+    latitude REAL
+    longitude REAL
+    FOREIGN KEY location_id
+  end note
+
+  :Create indexes on location_id and date_utc;
+  :Commit and store connection in app.state.db;
+
+fork again
+  :Initialize AQICNService();
+  |data_sources/aqicn_service.py|
+  :Read AQICN_API_KEY from settings;
+  :Set base URL https://api.waqi.info;
+  :Create AQICNService instance with API key;
+  :Store in app.state.aqicn_service;
+
+fork again
+  :Initialize OpenAQService();
+  |data_sources/openaq_loader.py|
+  :Set base URL https://api.openaq.org/v2;
+  :Create aiohttp ClientSession;
+  :Store in app.state.openaq_service;
+
+fork again
+  :Initialize QuantumProcessor();
+  |quantum/processor.py|
+  :Load Qiskit library;
+  :Initialize qasm_simulator backend;
+  :Create quantum circuits;
+  note right
+    Quantum circuits for:
+    AQI prediction optimization
+    Pattern recognition
+    Spatial interpolation
+    Image enhancement
+  end note
+  :Set quantum parameters;
+  :Store in app.state.quantum;
+
+fork again
+  :Load other data source services;
+  note right
+    Initialize but do not fetch data yet:
+    NASA_FIRMS_Loader
+    NASA_Satellite_Loader
+    OpenWeather_Loader
+    OSM_Overpass_Loader
+    WorldClim lazy load on demand
+    WorldPop lazy load on demand
+    PowerPlant DB lazy load
+    Census loader
+  end note
+end fork
+
+:Log Application startup complete;
+
+|main.py|
+:Include routers;
+
+fork
+  :app.include_router routes.aqi.router;
+fork again
+  :app.include_router routes.layers.router;
+fork again
+  :app.include_router routes.tiles.router;
+fork again
+  :app.include_router routes.search.router;
+fork again
+  :app.include_router routes.quantum.router;
+end fork
+
+:Define root endpoint @app.get("/");
+note right
+  Returns:
+  service: AetherScan API
+  version: 1.0
+  status: active
+end note
+
+|System|
+:uvicorn.run app on port 8000;
+
+:Start ASGI server Listen on port 8000;
+note right
+  Server ready
+  Base URL - http://localhost:8000
+  Docs - http://localhost:8000/docs
+
+  Available endpoints
+  POST /aqi/calculate
+  GET /aqi/forecast
+  GET /aqi/stations/search
+  GET /aqi/stations/nearby
+  GET /layers/pollution-heatmap
+  GET /layers/state-heatmap
+  GET /layers/trend-evolution
+  GET /layers/dynamic-aqi
+  GET /layers/sensors
+  GET /layers/industries
+  GET /layers/power-plants
+  GET /layers/refineries
+  GET /layers/population-density
+  GET /layers/population-exposure
+  GET /layers/fires
+  GET /layers/satellite-indicators
+  GET /tiles/heatmap/{z}/{x}/{y}.png
+  GET /search/location
+  POST /quantum/process
+end note
+
+:Wait for incoming requests;
+
+note right
+  Shutdown sequence when SIGTERM/SIGINT received
+  1. Close DB connection
+  2. Close aiohttp sessions
+  3. Clean up AQICN service
+  4. Stop uvicorn server
+end note
+
+stop
+
+@enduml

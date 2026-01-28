@@ -1,0 +1,400 @@
+@startuml User Interaction Flow
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam linetype ortho
+
+title AetherScan - User Interaction & Event Handling Flow
+
+|User|
+start
+
+split
+  :Click on map;
+  |BaseMap.tsx|
+  :onClick event triggered;
+  :Extract coordinates\n(lng, lat);
+  note right
+    Event object:    {
+      lngLat: {lng, lat},
+      point: {x, y},
+      features: []
+    }
+  end note
+
+  :Call handleMapClick(lng, lat);
+  |page.tsx|
+  :setState: isLoadingAQI = true;
+  :setState: selectedLocation = {lng, lat};
+
+  :Call aqiAPI.calculate(lat, lng);
+  note right
+    See [[03_api_execution_flow.puml{API flow}]]
+  end note
+
+  :Receive AQI data;
+  :setState: aqiData = response;
+  :setState: isLoadingAQI = false;
+  :Trigger UI update;
+
+  |AQIInfoPanel.tsx|
+  :Render AQI information;
+  :Animate panel slide-in\n(Framer Motion);
+
+  |BaseMap.tsx|
+  :Add marker at location;
+  :Fly to location (smooth animation);
+  note right
+    map.flyTo({
+      center: [lng, lat],
+      zoom: 12,
+      duration: 1500
+    })
+  end note
+  detach
+
+split again
+  :Type in search box;
+  |ModernSearch.tsx|
+  :onChange event;
+  :Extract search query;
+  :Debounce input (300ms);
+  note right
+    Uses lodash.debounce
+    or custom hook
+  end note
+
+  if (Query length >= 3?) then (yes)
+    :setState: isSearching = true;
+    :Call searchAPI.location(query);
+
+    |Backend|
+    :GET /search/location?q={query};
+    |routes/search.py|
+    :Call Nominatim API;
+    note right
+      https://nominatim.openstreetmap.org/
+      search?q={query}&format=json
+      &countrycodes=in
+      &limit=5
+    end note
+
+    :Receive location results;
+    :Return formatted results;
+
+    |ModernSearch.tsx|
+    :setState: searchResults = results;
+    :setState: isSearching = false;
+    :Display dropdown with results;
+  else (no)
+    :Clear search results;
+    stop
+  endif
+
+  :User selects result from dropdown;
+  :onClick result;
+  :Extract location coordinates;
+  :Call handleLocationSelect(location);
+
+  |page.tsx|
+  :setState: viewState with new coords;
+  :setState: selectedLocation = location;
+  :Call handleMapClick (same as above);
+  detach
+
+split again
+  :Toggle layer visibility;
+  |LayerManager.tsx|
+  :onClick layer toggle;
+  :Extract layer key;
+  note right
+    Example layer keys
+    • pollutionHeatmap
+    • dynamicAQI
+    • sensors
+    • industries
+  end note
+
+  :Call handleLayerToggle(layerKey);
+
+  |page.tsx|
+  :setState: activeLayers[layerKey] = !current;
+
+  if (Layer enabled?) then (yes)
+    :setState: isLoadingLayers = true;
+    :Call appropriate layer API;
+
+    if (layerKey == 'pollutionHeatmap') then
+      :layersAPI.getPollutionHeatmap();
+      |Backend|
+      :GET /layers/pollution-heatmap;
+      |routes/layers.py|
+      :Query database for measurements;
+      |core/idw_interpolation.py|
+      :Perform IDW interpolation;
+      note right
+        See [[07_layer_rendering_pipeline.puml{details}]]
+      end note
+      :Return GeoJSON grid;
+    elseif (layerKey == 'fires') then
+      :layersAPI.getFires();
+      :GET /layers/fires;
+      |data_sources/nasa_firms_loader.py|
+      :Fetch NASA FIRMS data;
+      :Return fire points;
+    else
+      :Other layer types...;
+    endif
+
+    :Receive layer data;
+    :setState: layerData[layerKey] = data;
+    :setState: isLoadingLayers = false;
+
+    |React|
+    :Trigger layer component mount;
+    |components/Layers/{Layer}.tsx|
+    :Create Deck.gl layer;
+    :Add layer to map;
+
+    |BaseMap.tsx|
+    :Update DeckGL overlay;
+    :Render new layer\n//Output: Visual layer added//;
+  else (no)
+    :Remove layer from map;
+    :Clean up layer data;
+  endif
+  detach
+
+split again
+  :Adjust layer opacity;
+  |LayerManager.tsx|
+  :onSliderChange event;
+  :Extract layerKey, opacity value;
+
+  :Call handleOpacityChange(layerKey, opacity);
+
+  |page.tsx|
+  :setState: layerOpacity[layerKey] = opacity;
+
+  |Layer Component|
+  :Update layer props;
+  note right
+    deckglLayer.setProps({
+      opacity: newOpacity
+    })
+  end note
+
+  :Re-render layer with new opacity;
+  detach
+
+split again
+  :Move time slider;
+  |TimeSlider.tsx|
+  :onChange event;
+  :Extract selected date;
+
+  :Call handleDateChange(date);
+
+  |page.tsx|
+  :setState: selectedDate = date;
+
+  :Loop through temporal layers;
+  note right
+    Temporal layers
+    • trendEvolution
+    • historicalAQI
+    • fireProgression
+  end note
+
+  :Call layersAPI.getTrendEvolution(date);
+  :Receive historical data;
+  :Update layer data;
+
+  :Call layersAPI.getHistoricalFires(date);
+  :Receive fire data;
+  :Update layer data;
+
+  :Trigger layer re-render;
+  detach
+
+split again
+  :Press keyboard shortcut;
+  |useKeyboardShortcuts.ts|
+  :onKeyDown event;
+  :Extract key combination;
+
+  if (Ctrl plus L) then (yes)
+    :Toggle layer panel;
+    |page.tsx|
+    :setState: showLayerPanel;
+    :Trigger panel animation;
+    detach
+
+  elseif (Ctrl plus I) then (yes)
+    :Toggle info panel;
+    :setState: showInfoPanel;
+    detach
+
+  elseif (Ctrl plus S) then (yes)
+    :Focus search input;
+    |ModernSearch.tsx|
+    :Focus on searchInputRef;
+    detach
+
+  elseif (Esc key) then (yes)
+    :Close all panels;
+    :setState: close all;
+    detach
+
+  elseif (Number keys) then (yes)
+    :Toggle layer by number;
+    :Map number to layer key;
+    :Call handleLayerToggle;
+    detach
+  endif
+
+split again
+  :Click industry icon;
+  |IndustryOverlay.tsx|
+  :onClick marker;
+  :Extract industry data;
+  note right
+    Industry data:    {
+      name: string,
+      type: string,
+      location: {lat, lon},
+      emissions: {...},
+      capacity: string
+    }
+  end note
+
+  :Call handleIndustryClick(industryData);
+
+  |page.tsx|
+  :setState: selectedIndustry = data;
+  :Open industry details panel;
+
+  |IndustryDetailsPanel.tsx|
+  :Render industry information;
+  :Display emission data;
+  :Show proximity to stations;
+  :Render charts (Recharts);
+  detach
+
+split again
+  :Compare multiple locations;
+  |LocationComparison.tsx|
+  :Click "Add location" button;
+  :Open location selector;
+  :User selects location;
+
+  :Call addComparisonLocation(location);
+
+  |page.tsx|
+  :setState: comparisonLocations.push(location);
+
+  :Loop through locations;
+  :Fetch AQI for all locations;
+
+  :Aggregate AQI data;
+  :setState: comparisonData = data;
+
+  |LocationComparison.tsx|
+  :Render comparison table;
+  :Generate comparison charts;
+  :Highlight differences;
+  detach
+
+split again
+  :Bookmark location;
+  |BookmarkLocations.tsx|
+  :Click bookmark icon;
+  :Extract current location & name;
+
+  :Call saveBookmark(location);
+
+  |page.tsx|
+  :Get existing bookmarks from localStorage;
+  :Add new bookmark;
+  :Save to localStorage;
+  note right
+    Bookmark data:    {
+      id: string,
+      name: string,
+      lat: number,
+      lon: number,
+      savedAt: timestamp,
+      lastAQI: number
+    }
+  end note
+
+  :setState: bookmarks = updated;
+  :Show success notification;
+  detach
+
+split again
+  :Export map;
+  |MapExportUtils.ts|
+  :Click export button;
+  :Select export format (PNG/PDF);
+
+  if (Format == PNG) then
+    :Use html2canvas;
+    :Capture map viewport;
+    :Generate PNG image;
+    :Trigger download;
+    note right
+      html2canvas(mapElement).then(canvas => {
+        canvas.toBlob(blob => {
+          saveAs(blob, 'aetherscan-map.png')
+        })
+      })
+    end note
+    detach
+
+  else (PDF)
+    :Use jsPDF;
+    :Capture map viewport;
+    :Add metadata & legend;
+    :Generate PDF document;
+    |researchGradePDFGenerator.ts|
+    :Add research annotations;
+    :Include data sources;
+    :Add timestamp & coords;
+    :Trigger download;
+    note right
+      Research-grade PDF includes
+      • High-res map image
+      • AQI data table
+      • Legend & scale
+      • Data sources & credits
+      • Timestamp & location
+      • Export settings
+    end note
+    detach
+  endif
+
+end split
+
+note right
+  State Management Summary
+  All interactions update React state via setState
+  which triggers component re-renders following
+  the unidirectional data flow pattern
+
+  User Action -> Event Handler -> State Update ->
+  Component Re-render -> UI Update
+
+  Performance Optimizations
+  • React.memo for heavy components
+  • useMemo for expensive calculations
+  • useCallback for stable function references
+  • Debounced search input
+  • Lazy loading for layer components
+  • Virtualization for long lists
+  • Request cancellation on unmount
+end note
+
+stop
+
+@enduml

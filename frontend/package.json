@@ -1,0 +1,46 @@
+{
+  "name": "aetherscan-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@deck.gl/core": "^8.9.35",
+    "@deck.gl/geo-layers": "^8.9.35",
+    "@deck.gl/layers": "^8.9.35",
+    "@deck.gl/react": "^8.9.35",
+    "axios": "^1.6.2",
+    "chart.js": "^4.5.1",
+    "chartjs-node-canvas": "^5.0.0",
+    "chartjs-to-image": "^1.2.2",
+    "clsx": "^2.0.0",
+    "date-fns": "^3.0.0",
+    "deck.gl": "^8.9.35",
+    "framer-motion": "^10.18.0",
+    "jspdf": "^3.0.4",
+    "jspdf-autotable": "^5.0.2",
+    "lucide-react": "^0.294.0",
+    "maplibre-gl": "^3.6.2",
+    "next": "^14.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-map-gl": "^7.1.7",
+    "recharts": "^2.10.3",
+    "tailwind-merge": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.0.4",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.3"
+  }
+}

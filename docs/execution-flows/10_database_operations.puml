@@ -1,0 +1,593 @@
+@startuml Database Operations Flow
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam linetype ortho
+
+title AetherScan - Database Operations & Data Persistence Flow
+
+|Application Lifecycle|
+start
+
+partition "Database Initialization" {
+  |main.py|
+  :Application startup;
+  :Lifespan event: startup;
+
+  |db/database.py|
+  :Function: init_database();
+
+  :Set database path;
+  note right
+    Database configuration
+    DB_PATH = "cache/aetherscan.db"
+    Engine - SQLite 3
+    Driver - aiosqlite (async)
+  end note
+
+  :Check if database file exists;
+  if (Database exists?) then (yes)
+    :Database found;
+  else (no)
+    :Create cache directory;
+    :os.makedirs("cache", exist_ok=True);
+    :Database will be created on first connection;
+  endif
+
+  :Create async connection;
+  note right
+    import aiosqlite
+
+    conn = await aiosqlite.connect(
+      DB_PATH,
+      timeout=30.0,
+      isolation_level=None
+    )
+  end note
+
+  :Enable WAL mode for concurrency;
+  note right
+    WAL (Write-Ahead Logging)
+    Allows concurrent reads and writes
+
+    await conn.execute(
+      "PRAGMA journal_mode=WAL"
+    )
+  end note
+
+  :Enable foreign keys;
+  note right
+    await conn.execute(
+      "PRAGMA foreign_keys=ON"
+    )
+  end note
+
+  :Create tables;
+}
+
+partition "Table openaq_stations" {
+  :Execute CREATE TABLE;
+  note right
+    Schema openaq_stations
+    CREATE TABLE IF NOT EXISTS openaq_stations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      location_id TEXT UNIQUE NOT NULL,
+      name TEXT,
+      latitude REAL NOT NULL,
+      longitude REAL NOT NULL,
+      city TEXT,
+      country TEXT DEFAULT 'IN',
+      entity TEXT,
+      sensor_type TEXT,
+      last_updated DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT valid_lat CHECK (
+        latitude >= -90 AND latitude <= 90
+      ),
+      CONSTRAINT valid_lon CHECK (
+        longitude >= -180 AND longitude <= 180
+      )
+    );
+
+    Indexes
+    CREATE INDEX IF NOT EXISTS idx_stations_location_id
+      ON openaq_stations(location_id);
+    CREATE INDEX IF NOT EXISTS idx_stations_coords
+      ON openaq_stations(latitude, longitude);
+    CREATE INDEX IF NOT EXISTS idx_stations_country
+      ON openaq_stations(country);
+
+    Purpose
+    Store air quality monitoring station metadata
+  end note
+
+  :Table created;
+}
+
+partition "Table openaq_measurements" {
+  :Execute CREATE TABLE;
+  note right
+    Schema openaq_measurements
+    CREATE TABLE IF NOT EXISTS openaq_measurements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      location_id TEXT NOT NULL,
+      parameter TEXT NOT NULL,
+      value REAL NOT NULL,
+      unit TEXT NOT NULL,
+      date_utc DATETIME NOT NULL,
+      latitude REAL NOT NULL,
+      longitude REAL NOT NULL,
+      FOREIGN KEY (location_id)
+        REFERENCES openaq_stations(location_id)
+        ON DELETE CASCADE,
+      CONSTRAINT valid_parameter CHECK (
+        parameter IN ('pm25', 'pm10', 'no2',
+                      'so2', 'co', 'o3')
+      ),
+      CONSTRAINT valid_value CHECK (value >= 0)
+    );
+
+    Indexes
+    CREATE INDEX IF NOT EXISTS idx_measurements_location
+      ON openaq_measurements(location_id);
+    CREATE INDEX IF NOT EXISTS idx_measurements_date
+      ON openaq_measurements(date_utc);
+    CREATE INDEX IF NOT EXISTS idx_measurements_parameter
+      ON openaq_measurements(parameter);
+    CREATE INDEX IF NOT EXISTS idx_measurements_coords
+      ON openaq_measurements(latitude, longitude);
+    CREATE INDEX IF NOT EXISTS
+      idx_measurements_spatial_temporal
+      ON openaq_measurements(
+        latitude, longitude, date_utc
+      );
+
+    Purpose
+    Store time-series pollutant measurements
+  end note
+
+  :Table created;
+}
+
+:Store connection in app state;
+:app.state.db = conn;
+
+:Database ready\n//Output: DB connection//;
+
+split
+  note left
+    INSERT Operation - Store Station Data
+  end note
+  |data_sources/openaq_loader.py|
+  :Fetch new station data from OpenAQ API;
+
+    :Parse station JSON;
+    note right
+      {
+        "location_id": "IN12345",
+        "name": "Delhi - Punjabi Bagh",
+        "latitude": 28.6139,
+        "longitude": 77.2090,
+        "city": "Delhi",
+        "entity": "CPCB",
+        "sensor_type": "BAM"
+      }
+    end note
+
+    |db/database.py|
+    :Function: insert_station(station_data);
+
+    :Prepare INSERT statement;
+    note right
+      SQL INSERT OR REPLACE
+      INSERT OR REPLACE INTO openaq_stations
+        (location_id, name, latitude, longitude,
+         city, country, entity, sensor_type,
+         last_updated)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+      Using REPLACE to handle duplicates
+      • If location_id exists -> UPDATE
+      • If new -> INSERT
+    end note
+
+    :Execute async query;
+    note right
+      await conn.execute(
+        sql,
+        (location_id, name, lat, lon,
+         city, country, entity, sensor_type,
+         datetime.now())
+      )
+    end note
+
+    :Commit transaction;
+    :await conn.commit();
+
+    :Return inserted row ID;
+    detach
+
+split again
+  note left
+    INSERT Operation - Store Measurements
+  end note
+  |data_sources/openaq_loader.py|
+    :Fetch new measurements from API;
+
+    :Loop through measurements;
+    repeat
+      :Parse measurement JSON;
+      note right
+        {
+          "location_id": "IN12345",
+          "parameter": "pm25",
+          "value": 45.2,
+          "unit": "ug/m3",
+          "date_utc": "2026-01-09T10:30:00Z",
+          "latitude": 28.6139,
+          "longitude": 77.2090
+        }
+      end note
+
+      |db/database.py|
+      :Function: insert_measurement(data);
+
+      :Prepare INSERT statement;
+      note right
+        INSERT INTO openaq_measurements
+          (location_id, parameter, value, unit,
+           date_utc, latitude, longitude)
+        VALUES (?, ?, ?, ?, ?, ?, ?);
+      end note
+
+      :Execute query;
+      :Batch 100 measurements per commit;
+
+    repeat while (More measurements?)
+
+    :Commit batch;
+    :await conn.commit();
+
+    :Return count of inserted rows;
+    detach
+
+split again
+  note left
+    SELECT Operation - Query Measurements by Bounds
+  end note
+  |routes/layers.py|
+  :Request: Get measurements for map bounds;
+
+    :Input: bounds (min_lat, max_lat, min_lon, max_lon);
+    :Input: date_range (start_date, end_date);
+    :Input: parameters (list of pollutants);
+
+    |db/database.py|
+    :Function: query_measurements_by_bounds();
+
+    :Build SELECT query;
+    note right
+      SQL Complex spatial-temporal query
+      SELECT
+        m.location_id,
+        m.parameter,
+        AVG(m.value) as avg_value,
+        m.latitude,
+        m.longitude,
+        s.name,
+        s.city,
+        COUNT(*) as measurement_count
+      FROM openaq_measurements m
+      INNER JOIN openaq_stations s
+        ON m.location_id = s.location_id
+      WHERE
+        m.latitude BETWEEN ? AND ?
+        AND m.longitude BETWEEN ? AND ?
+        AND m.date_utc BETWEEN ? AND ?
+        AND m.parameter IN (?, ?, ?, ?)
+      GROUP BY
+        m.location_id,
+        m.parameter,
+        m.latitude,
+        m.longitude
+      HAVING COUNT(*) >= 3
+      ORDER BY m.latitude, m.longitude;
+
+      Query optimization
+      • Uses idx_measurements_spatial_temporal
+      • JOIN with station for metadata
+      • GROUP BY for averaging
+      • HAVING to filter sparse data
+    end note
+
+    :Execute async query;
+    :cursor = await conn.execute(sql, params);
+    :rows = await cursor.fetchall();
+
+    :Parse result rows;
+    note right
+      Result format
+      [
+        {
+          "location_id": "IN12345",
+          "parameter": "pm25",
+          "avg_value": 45.2,
+          "latitude": 28.6139,
+          "longitude": 77.2090,
+          "name": "Delhi - Punjabi Bagh",
+          "city": "Delhi",
+          "measurement_count": 24
+        },
+        ...
+      ]
+    end note
+
+    :Transform to dict/list;
+    :Return query results\n//Output: List of measurements//;
+    detach
+
+split again
+  note left
+    SELECT Operation - Time-Series Query
+  end note
+  |routes/layers.py|
+  :Request: Get trend evolution data;
+
+  :Input: location_id, date_range, parameter;
+
+    |db/database.py|
+    :Function: query_time_series();
+
+    :Build time-series query;
+    note right
+      SQL Time-series aggregation
+      SELECT
+        DATE(date_utc) as date,
+        parameter,
+        AVG(value) as daily_avg,
+        MIN(value) as daily_min,
+        MAX(value) as daily_max,
+        COUNT(*) as sample_count
+      FROM openaq_measurements
+      WHERE
+        location_id = ?
+        AND parameter = ?
+        AND date_utc >= DATE('now', '-30 days')
+      GROUP BY DATE(date_utc), parameter
+      ORDER BY date;
+
+      Window function for moving average
+      SELECT
+        date,
+        daily_avg,
+        AVG(daily_avg) OVER (
+          ORDER BY date
+          ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+        ) as moving_avg_7day
+      FROM daily_measurements;
+    end note
+
+    :Execute query;
+    :Parse time-series data;
+    :Return time-series\n//Output: Daily measurements//;
+    detach
+
+split again
+  note left
+    UPDATE Operation - Update Station Metadata
+  end note
+  |Background Task|
+  :Periodic station metadata update;
+
+    |db/database.py|
+    :Function: update_station(location_id, updates);
+
+    :Build UPDATE query;
+    note right
+      UPDATE openaq_stations
+      SET
+        name = ?,
+        entity = ?,
+        sensor_type = ?,
+        last_updated = ?
+      WHERE location_id = ?;
+    end note
+
+    :Execute update;
+    :Commit;
+    :Return updated row count;
+    detach
+
+split again
+  note left
+    DELETE Operation - Clean Old Data
+  end note
+  |Scheduled Task|
+    :Cron job: Daily cleanup at 2 AM;
+
+    |db/database.py|
+    :Function: delete_old_measurements(days);
+
+    :Calculate cutoff date;
+    note right
+      cutoff = datetime.now() - timedelta(days=90)
+
+      Keep last 90 days of data
+    end note
+
+    :Build DELETE query;
+    note right
+      SQL Delete with date filter
+      DELETE FROM openaq_measurements
+      WHERE date_utc < ?;
+
+      Also clean orphaned stations
+      DELETE FROM openaq_stations
+      WHERE location_id NOT IN (
+        SELECT DISTINCT location_id
+        FROM openaq_measurements
+      );
+    end note
+
+    :Execute delete;
+    :deleted_count = cursor.rowcount;
+    :Commit;
+
+    :Log deletion;
+    note right
+      logger.info(
+        f"Cleaned {deleted_count} old measurements"
+      )
+    end note
+
+    :Vacuum database;
+    note right
+      Database maintenance
+      await conn.execute("VACUUM");
+
+      Reclaim disk space and optimize
+    end note
+    detach
+
+split again
+  note left
+    TRANSACTION Operation - Bulk Import
+  end note
+  |Data Import Task|
+    :Import large CSV dataset;
+
+    |db/database.py|
+    :Function: bulk_import_measurements(data);
+
+    :Begin transaction;
+    :await conn.execute("BEGIN TRANSACTION");
+
+    :Disable indexes temporarily;
+    note right
+      For faster bulk insert
+      Disable indexes, insert, rebuild indexes
+    end note
+
+    :Loop through data rows;
+    repeat
+      :Prepare parameterized query;
+      :Execute insert;
+    repeat while (More rows?)
+
+    :Rebuild indexes;
+    :await conn.execute("REINDEX");
+
+    :Commit transaction;
+    :await conn.execute("COMMIT");
+
+    if (Error occurred?) then (yes)
+      :Rollback transaction;
+      :await conn.execute("ROLLBACK");
+      :Log error;
+      stop
+    else (no)
+      :Transaction complete;
+      detach
+    endif
+
+end split
+
+|Admin Endpoint|
+:Request: GET /admin/db-stats;
+
+|db/database.py|
+:Query database statistics;
+  note right
+    Statistics queries
+    -- Table row counts
+    SELECT COUNT(*) FROM openaq_stations;
+    SELECT COUNT(*) FROM openaq_measurements;
+
+    -- Database size
+    SELECT page_count * page_size / 1024.0 / 1024.0
+      AS size_mb
+    FROM pragma_page_count(), pragma_page_size();
+
+    -- Date range coverage
+    SELECT MIN(date_utc), MAX(date_utc)
+    FROM openaq_measurements;
+
+    -- Measurements per parameter
+    SELECT parameter, COUNT(*)
+    FROM openaq_measurements
+    GROUP BY parameter;
+
+    -- Spatial coverage
+    SELECT
+      MIN(latitude), MAX(latitude),
+      MIN(longitude), MAX(longitude)
+    FROM openaq_stations;
+  end note
+
+  :Return statistics JSON;
+  note right
+    {
+      "total_stations": 1245,
+      "total_measurements": 3458920,
+      "database_size_mb": 487.3,
+      "date_range": {
+        "start": "2025-10-01",
+        "end": "2026-01-09"
+      },
+      "measurements_by_parameter": {
+        "pm25": 876234,
+        "pm10": 876234,
+        "no2": 542178,
+        "so2": 498765,
+        "co": 334521,
+        "o3": 331088
+      },
+      "spatial_coverage": {
+        "lat_range": [6.2, 36.8],
+        "lon_range": [68.1, 97.4]
+      }
+    }
+  end note
+
+|Application Lifecycle|
+:Application shutdown;
+:Lifespan event: shutdown;
+
+|db/database.py|
+:Close database connection;
+:await conn.close();
+
+note right
+  Database Performance
+
+  Query optimization
+  • Indexes on frequently queried columns
+  • Compound indexes for multi-column queries
+  • EXPLAIN QUERY PLAN for optimization
+  • Prepared statements with parameter binding
+  • Connection pooling single connection for SQLite
+
+  Concurrency
+  • WAL mode allows concurrent reads plus 1 writer
+  • Async operations with aiosqlite for non-blocking I/O
+  • Transaction batching for bulk operations
+
+  Backup strategy
+  • Daily backup to cache/backups/
+  • Incremental backups copy database file
+  • Export to CSV for external analysis
+
+  Data retention
+  • Measurements - 90 days rolling window
+  • Stations - Permanent
+  • Aggregated statistics - Permanent
+
+  Estimated database growth
+  • 1000 stations × 6 parameters = 6000 measurements/hour
+  • 6000 × 24 hours × 90 days = 12.96M rows
+  • ~500 MB for 90 days of data
+end note
+
+stop
+
+@enduml

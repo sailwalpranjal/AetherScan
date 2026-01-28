@@ -1,0 +1,298 @@
+@startuml Quantum Processing Flow
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+
+title AetherScan - Quantum Processing & Optimization Flow
+
+|quantum/processor.py|
+
+start
+
+partition "Quantum Processor Initialization" {
+  :Class: QuantumEnvironmentalProcessor;
+
+  :Load Qiskit library;
+  note right
+    from qiskit import QuantumCircuit
+    from qiskit import QuantumRegister
+    from qiskit import ClassicalRegister
+    from qiskit import execute
+  end note
+
+  :Initialize quantum backend;
+  note right
+    Backend - qasm_simulator
+    (Classical simulation of quantum)
+    Shots - 1024
+    Max qubits - 32
+  end note
+
+  :Create quantum circuits;
+  note right
+    Circuits for
+    • AQI prediction
+    • Pattern recognition
+    • Spatial interpolation
+    • Image enhancement
+  end note
+
+  :Store in app.state.quantum;
+}
+
+partition "AQI Prediction Optimization" {
+  :Input: Raw AQI measurements;
+  note right
+    {
+      pm25: 45.2,
+      pm10: 88.1,
+      no2: 32.5,
+      so2: 15.3,
+      co: 1.2,
+      o3: 28.7
+    }
+  end note
+
+  :Encode to quantum state;
+  :Create quantum register (6 qubits);
+  note right
+    Each pollutant mapped to qubit
+    |q0⟩ = PM2.5
+    |q1⟩ = PM10
+    |q2⟩ = NO2
+    |q3⟩ = SO2
+    |q4⟩ = CO
+    |q5⟩ = O3
+
+    Value encoding
+    Amplitude encoding of normalized values
+  end note
+
+  :Apply quantum gates;
+  note right
+    Gate sequence
+    • Hadamard gates (superposition)
+    • CNOT gates (entanglement)
+    • Rotation gates (phase encoding)
+    • Custom oracle for AQI patterns
+  end note
+
+  :Create entanglement;
+  note right
+    Entangle pollutant qubits to
+    capture correlations
+    PM2.5 ↔ PM10
+    NO2 ↔ SO2
+    All ↔ O3
+  end note
+
+  :Apply quantum Fourier transform;
+  :Measure quantum state;
+
+  :Decode measurement results;
+  :Extract optimized predictions;
+  note right
+    Output Enhanced AQI values
+    with improved accuracy
+  end note
+}
+
+partition "Spatial Interpolation Enhancement" {
+  :Input: Grid points and station data;
+
+  :Encode spatial coordinates;
+  :Create quantum superposition of locations;
+  note right
+    Each grid cell represented in
+    quantum superposition allowing
+    parallel processing
+  end note
+
+  :Apply distance-weighted oracle;
+  note right
+    Quantum oracle encodes
+    • Haversine distances
+    • IDW weights
+    • Spatial correlations
+  end note
+
+  :Entangle neighboring cells;
+  note right
+    Creates quantum correlations
+    between adjacent grid cells
+    for smooth transitions
+  end note
+
+  :Apply amplitude amplification;
+  note right
+    Grover-like algorithm to
+    amplify high-quality
+    interpolation patterns
+  end note
+
+  :Measure and decode;
+  :Return refined grid values;
+  note right
+    Output Smoothed spatial data
+    with enhanced continuity
+  end note
+}
+
+partition "Pattern Recognition Acceleration" {
+  :Input: Time-series pollution data;
+
+  :Encode temporal patterns;
+  :Create quantum feature space;
+  note right
+    Quantum feature mapping:
+    Classical data -> Quantum states
+    via parameterized circuits
+  end note
+
+  :Apply variational quantum classifier;
+  note right
+    VQC layers
+    • Encoding layer
+    • Variational layer (trainable)
+    • Measurement layer
+
+    Detects
+    • Seasonal patterns
+    • Anomalies
+    • Trends
+  end note
+
+  :Quantum kernel estimation;
+  note right
+    Computes quantum kernel matrix
+    for non-linear pattern separation
+  end note
+
+  :Classify patterns;
+  :Return pattern labels;
+  note right
+    Classifications
+    • Normal variation
+    • Anomaly
+    • Rising trend
+    • Falling trend
+    • Seasonal spike
+  end note
+}
+
+partition "Image Enhancement Processing" {
+  :Input: Tile RGBA array;
+
+  :Encode pixel values to qubits;
+  note right
+    Quantum image representation:
+    FRQI (Flexible Representation
+    of Quantum Images)
+
+    256x256 image -> Quantum state
+    using 16 qubits for position
+    + qubits for color channels
+  end note
+
+  :Apply quantum edge detection;
+  note right
+    Quantum Sobel operator
+    for edge enhancement
+  end note
+
+  :Quantum smoothing operator;
+  note right
+    Quantum Gaussian blur
+    for noise reduction
+  end note
+
+  :Optimize color gradients;
+  note right
+    Quantum annealing approach
+    to optimize smooth color
+    transitions between pixels
+  end note
+
+  :Measure and decode to classical;
+  :Convert back to RGBA array;
+  note right
+    Output Enhanced image
+    with improved visual quality
+  end note
+}
+
+partition "Data Preprocessing Optimization" {
+  :Input: Raw sensor measurements;
+
+  :Quantum outlier detection;
+  note right
+    Quantum k-means clustering
+    to identify anomalous readings
+  end note
+
+  :Quantum data cleaning;
+  note right
+    Uses quantum amplitude
+    amplification to enhance
+    signal-to-noise ratio
+  end note
+
+  :Quantum feature extraction;
+  note right
+    Quantum PCA for dimensionality
+    reduction and feature selection
+  end note
+
+  :Return cleaned data;
+  note right
+    Output Preprocessed data
+    ready for analysis
+  end note
+}
+
+:Aggregate quantum results;
+:Log processing metrics;
+note right
+  Metrics
+  • Circuit depth
+  • Gate count
+  • Execution time
+  • Fidelity score
+  • Enhancement ratio
+end note
+
+:Return to calling module;
+
+note right
+  Quantum Processing Implementation
+
+  Reality - All quantum operations are
+  simulated on classical hardware using
+  Qiskit qasm_simulator.
+
+  Purpose - Demonstrates advanced
+  computational concepts and provides
+  framework for future quantum hardware
+  integration when available.
+
+  Performance - Classical simulation
+  adds ~50-200ms overhead but provides
+  • Advanced algorithm demonstrations
+  • Pattern recognition capabilities
+  • Future-proof architecture
+
+  Algorithms Used
+  • Quantum Fourier Transform QFT
+  • Grover Amplitude Amplification
+  • Variational Quantum Circuits VQC
+  • Quantum Kernel Estimation
+  • Quantum Image Processing FRQI
+  • Quantum PCA
+
+  Deployment - Can be disabled via
+  config flag for production performance.
+end note
+
+stop
+
+@enduml

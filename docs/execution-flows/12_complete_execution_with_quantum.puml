@@ -1,0 +1,228 @@
+@startuml Complete Execution Flow with Quantum
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 9
+skinparam nodesep 60
+skinparam ranksep 60
+
+title AetherScan - Complete Request Execution Flow\n(With Quantum Processing Integration)
+
+|User|
+start
+:Opens browser\nNavigates to app;
+
+|Frontend|
+:Load React app;
+:Initialize map;
+:Render UI components;
+
+:User clicks map\nat (28.6, 77.2);
+
+:Trigger handleMapClick;
+:Send API request;
+
+|API Gateway|
+:Receive POST /aqi/calculate;
+:Validate request;
+
+|Backend Routes|
+:Route to AQI handler;
+
+|Data Sources|
+fork
+  :Query AQICN API;
+  :Get real-time AQI data;
+fork again
+  :Query OpenAQ (fallback);
+  :Get measurements;
+fork again
+  :Query database;
+  :Get historical data;
+end fork
+
+:Aggregate all data sources;
+
+|Quantum Processor|
+:Encode data to quantum state;
+note right
+  See [[./11_quantum_processing_flow.puml detailed flow]]
+  • Create quantum superposition
+  • Apply entanglement
+  • Execute quantum circuit
+end note
+
+:Apply quantum optimization;
+:Enhance pattern recognition;
+:Improve prediction accuracy;
+:Decode quantum measurements;
+
+|AQI Calculator|
+:Receive optimized data;
+:Calculate AQI sub-indices;
+:Determine dominant pollutant;
+:Assign category;
+
+|Database|
+:Store calculated AQI;
+:Store measurements;
+:Update statistics;
+
+|Response Builder|
+:Format AQI result;
+:Add recommendations;
+:Include forecast data;
+
+|API Gateway|
+:Return JSON response;
+
+|Frontend|
+:Receive AQI data;
+:Update state;
+:Trigger re-render;
+
+|UI Components|
+fork
+  :Update AQI Info Panel;
+  :Display AQI value;
+  :Show category color;
+  :List recommendations;
+fork again
+  :Update map marker;
+  :Add colored pin;
+  :Animate marker;
+fork again
+  :Update legend;
+  :Show color scale;
+end fork
+
+|User|
+:Views AQI information;
+:Sees quantum-enhanced results;
+
+:User toggles\npollution heatmap layer;
+
+|Frontend|
+:Send layer data request;
+
+|Backend Routes|
+:Route to layers handler;
+
+|Database|
+:Query measurements\nwithin map bounds;
+:Return station data;
+
+|IDW Interpolation|
+:Create spatial grid;
+:Calculate distances;
+:Compute IDW weights;
+:Generate interpolated grid;
+
+|Quantum Processor|
+:Quantum spatial optimization;
+note right
+  • Smooth grid transitions
+  • Enhance spatial continuity
+  • Detect anomalies
+end note
+
+:Return optimized grid;
+
+|Layer Builder|
+:Convert grid to GeoJSON;
+:Apply color mapping;
+:Add metadata;
+
+|Tile Generator|
+fork
+  :Generate tile (8, 180, 98);
+  |Quantum Processor|
+  :Enhance image quality;
+  :Optimize color gradients;
+fork again
+  :Generate tile (8, 180, 99);
+  |Quantum Processor|
+  :Enhance image quality;
+  :Optimize color gradients;
+fork again
+  :Generate tile (8, 181, 98);
+  |Quantum Processor|
+  :Enhance image quality;
+  :Optimize color gradients;
+end fork
+
+:Cache all tiles;
+
+|API Gateway|
+:Return layer data;
+:Return tile images;
+
+|Frontend|
+:Receive layer data;
+:Load tiles;
+
+|Map Renderer|
+:Create Deck.gl HeatmapLayer;
+:Add tiles to map;
+:Render with GPU acceleration;
+
+|User|
+:Views pollution heatmap;
+:Sees smooth quantum-enhanced\nvisualization;
+
+stop
+
+note right
+  **Quantum Processing Integration Points**
+
+  1. **AQI Calculation** (03_api_execution_flow.puml)
+     • Data preprocessing
+     • Pattern recognition
+     • Prediction optimization
+
+  2. **Layer Rendering** (07_layer_rendering_pipeline.puml)
+     • Spatial interpolation enhancement
+     • Grid optimization
+     • Smooth transitions
+
+  3. **Tile Generation** (09_tile_generation_flow.puml)
+     • Image quality enhancement
+     • Color gradient optimization
+     • Artifact reduction
+
+  4. **Data Loading** (06_data_source_integration.puml)
+     • Anomaly detection
+     • Data quality enhancement
+     • Correlation analysis
+
+  **Performance Impact:**
+  • Additional latency: 50-200ms
+  • Accuracy improvement: Simulated 5-15%
+  • Visual quality: Enhanced smoothness
+
+  **Implementation:**
+  • IBM Qiskit framework
+  • Classical simulation (qasm_simulator)
+  • Can be disabled via config flag
+end note
+
+note left
+  **Complete Execution Flow**
+
+  Total request time: ~500-2000ms
+
+  Breakdown:
+  • API call: 50-100ms
+  • Data fetching: 200-800ms
+  • Quantum processing: 50-200ms
+  • AQI calculation: 10-50ms
+  • Database operations: 20-100ms
+  • Response formatting: 10-20ms
+  • Frontend rendering: 16-33ms
+
+  **Quantum Enhancement:**
+  Applied at 4 critical points
+  in the execution pipeline for
+  optimal results.
+end note
+
+@enduml

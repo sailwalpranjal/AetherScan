@@ -1,0 +1,399 @@
+@startuml Tile Generation Flow
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam linetype ortho
+
+title AetherScan - Map Tile Generation & Caching System
+
+|Frontend Map|
+start
+:User pans/zooms map;
+
+:MapLibre GL calculates\nrequired tiles;
+note right
+  Tile calculation
+  • Current viewport bounds
+  • Zoom level (z)
+  • Visible tile coordinates (x, y)
+
+  Example
+  Zoom 8, viewing Delhi
+  Tiles needed - (180,98), (180,99),
+                (181,98), (181,99), ...
+end note
+
+:Request tile from backend;
+note right
+  GET /tiles/heatmap/8/180/98.png
+  GET /tiles/heatmap/8/180/99.png
+  GET /tiles/heatmap/8/181/98.png
+  ...
+end note
+
+|routes/tiles.py|
+:Route: @router.get("/tiles/{layer_type}/{z}/{x}/{y}.png");
+
+:Extract path parameters;
+note right
+  layer_type: str (heatmap, aod, no2, etc.)
+  z: int (zoom level, 0-18)
+  x: int (tile column)
+  y: int (tile row)
+end note
+
+:Validate parameters;
+if (Valid tile coordinates?) then (yes)
+  :Continue;
+else (no)
+  :Return 400 Bad Request;
+  stop
+endif
+
+|core/tile_generator.py|
+:Class: TileGenerator;
+
+:Function: get_or_generate_tile(layer_type, z, x, y);
+
+partition "Cache Check" {
+  :Generate cache key;
+  note right
+    Cache key generation
+    cache_key = hashlib.sha256(
+      f"{layer_type}_{z}_{x}_{y}_{version}"
+      .encode()
+    ).hexdigest()
+
+    Example
+    "heatmap_8_180_98_v1"
+    -> "7a3f8c2d..."
+
+    Cache directory structure
+    cache/tiles/
+      ├── heatmap/
+      │   ├── 8/
+      │   │   ├── 180/
+      │   │   │   ├── 98.png
+      │   │   │   └── 99.png
+      │   │   └── 181/
+      │   │       └── 98.png
+      │   └── 9/
+      │       └── ...
+      ├── aod/
+      └── no2/
+  end note
+
+  :Check if tile exists in cache;
+  :cache_path = f"cache/tiles/{layer_type}/{z}/{x}/{y}.png";
+
+  if (File exists?) then (yes)
+    :Check file age;
+    if (Age < cache_ttl?) then (fresh)
+      :Read PNG from disk;
+      :Return cached tile\n//Output: PNG bytes//;
+      stop
+    else (stale)
+      :Delete stale tile;
+      :Continue to regeneration;
+    endif
+  else (no)
+    :Continue to generation;
+  endif
+}
+
+partition "Tile Bounds Calculation" {
+  :Function: tile_to_bounds(z, x, y);
+
+  :Calculate tile bounds in lat/lon;
+  note right
+    Web Mercator (EPSG:3857) to WGS84 (EPSG:4326)
+    n = 2^z
+
+    Longitude:    lon_min = (x / n) * 360 - 180
+    lon_max = ((x + 1) / n) * 360 - 180
+
+    Latitude (Web Mercator inverse):    lat_max = arctan(sinh(π * (1 - 2 * y / n)))
+              * (180 / π)
+    lat_min = arctan(sinh(π * (1 - 2 * (y + 1) / n)))
+              * (180 / π)
+
+    Example for tile (8, 180, 98):    z=8: n = 256
+    x=180: lon_min = 70.3125deg, lon_max = 71.7188deg
+    y=98: lat_min = 27.8deg, lat_max = 29.1deg
+
+    tile_bounds = [70.3125, 27.8, 71.7188, 29.1]
+  end note
+
+  :bounds = [lon_min, lat_min, lon_max, lat_max];
+}
+
+partition "Data Loading" {
+  if (layer_type == "heatmap") then
+    :Load pollution data for bounds;
+    |db/database.py|
+    :Query measurements within bounds;
+    :SELECT * FROM openaq_measurements\nWHERE latitude BETWEEN ? AND ?\nAND longitude BETWEEN ? AND ?;
+
+    :Get station data points;
+    note right
+      List of measurements
+      [
+        {lat: 28.6, lon: 77.2, pm25: 45, pm10: 88},
+        {lat: 28.8, lon: 77.0, pm25: 52, pm10: 95},
+        ...
+      ]
+    end note
+
+  elseif (layer_type == "aod") then
+    :Load satellite AOD raster;
+    |data_sources/nasa_satellite_loader.py|
+    :Open GeoTIFF with rasterio;
+    :Clip to tile bounds;
+
+  elseif (layer_type == "no2") then
+    :Load OMI NO2 raster;
+    :Clip to bounds;
+
+  elseif (layer_type == "fires") then
+    :Load NASA FIRMS fire points;
+    :Filter by bounds;
+  endif
+}
+
+partition "Raster Generation" {
+  if (Data is points?) then (yes)
+    :Interpolate to raster grid;
+    |core/idw_interpolation.py|
+    :Create 256x256 pixel grid;
+    :Perform IDW interpolation;
+    note right
+      See [[07_layer_rendering_pipeline.puml{IDW details}]]
+
+      Grid resolution:      For tile bounds [lon_min, lat_min, lon_max, lat_max]:
+
+      pixel_width = (lon_max - lon_min) / 256
+      pixel_height = (lat_max - lat_min) / 256
+
+      Each pixel center:
+      lon_i = lon_min + (i + 0.5) * pixel_width
+      lat_j = lat_min + (j + 0.5) * pixel_height
+    end note
+
+    :Output: 256x256 numpy array;
+
+  else (already raster)
+    :Reproject to tile CRS;
+    :Resample to 256x256;
+    note right
+      Resampling methods
+      • Nearest neighbor - categorical data
+      • Bilinear - continuous data
+      • Cubic - smooth continuous data
+
+      Using rasterio.warp.reproject()
+      reproject(
+        source=src_array,
+        destination=dst_array,
+        src_transform=src_transform,
+        src_crs='EPSG:4326',
+        dst_transform=tile_transform,
+        dst_crs='EPSG:3857',
+        resampling=Resampling.bilinear
+      )
+    end note
+  endif
+}
+
+partition "Color Mapping" {
+  :Apply color scale to values;
+
+  if (layer_type == "heatmap") then
+    :Use AQI color scale;
+    note right
+      AQI colors (RGBA)
+      value -> color
+      0-50    [0, 228, 0, 255]     # Green
+      51-100  [255, 255, 0, 255]   # Yellow
+      101-150 [255, 126, 0, 255]  # Orange
+      151-200 [255, 0, 0, 255]    # Red
+      201-300 [143, 63, 151, 255] # Purple
+      301+    [126, 0, 35, 255]    # Maroon
+      NoData  [0, 0, 0, 0]         # Transparent
+    end note
+
+  elseif (layer_type == "aod") then
+    :Use AOD color scale;
+    note right
+      AOD colors
+      0.0-0.2 - Light blue
+      0.2-0.5 - Yellow
+      0.5-1.0 - Orange
+      1.0+    - Red
+    end note
+
+  elseif (layer_type == "fires") then
+    :Use fire intensity scale;
+    note right
+      Fire colors
+      Based on FRP (Fire Radiative Power)
+      Low     - Yellow
+      Medium  - Orange
+      High    - Red
+      Extreme - White
+    end note
+  endif
+
+  :Create RGBA array (256x256x4);
+  note right
+    numpy array with shape (256, 256, 4)
+    dtype: uint8 (0-255)
+    channels: R, G, B, A
+  end note
+}
+
+:Apply quantum image enhancement;
+|quantum/processor.py|
+:Optimize pixel transitions;
+:Enhance visual quality;
+:Reduce artifacts;
+note right
+  Quantum image processing
+  • Smooths color gradients
+  • Optimizes tile boundaries
+  • Enhances visual clarity
+end note
+
+partition "PNG Generation" {
+  :Import PIL (Pillow);
+  :from PIL import Image;
+
+  :Create Image from array;
+  note right
+    img = Image.fromarray(
+      rgba_array,
+      mode='RGBA'
+    )
+  end note
+
+  :Apply transparency;
+  note right
+    Make NoData pixels fully transparent
+    by setting alpha channel to 0
+    for pixels where value == NoData
+  end note
+
+  :Optimize PNG;
+  note right
+    Optimization options
+    • PNG compression level - 6
+    • Interlace - False
+    • Optimize - True
+
+    Reduces file size by ~30-50%
+  end note
+
+  :Create BytesIO buffer;
+  :img.save(buffer, format='PNG', optimize=True);
+  :png_bytes = buffer.getvalue();
+}
+
+partition "Cache Storage" {
+  :Create cache directory if needed;
+  :os.makedirs(cache_dir, exist_ok=True);
+
+  :Write PNG to cache file;
+  :with open(cache_path, 'wb') as f:\n    f.write(png_bytes);
+
+  :Set file metadata;
+  note right
+    Store generation timestamp
+    for cache invalidation
+  end note
+
+  :Log cache write;
+  note right
+    logger.info(
+      f"Tile cached: {layer_type}/{z}/{x}/{y}"
+      f" (size: {len(png_bytes)} bytes)"
+    )
+  end note
+}
+
+|routes/tiles.py|
+:Return PNG response;
+note right
+  Response(
+    content=png_bytes,
+    media_type="image/png",
+    headers={
+      "Cache-Control": "public, max-age=3600",
+      "Content-Length": str(len(png_bytes)),
+      "X-Tile-Generated": "true"
+    }
+  )
+end note
+
+|Frontend Map|
+:Receive PNG tile;
+:Decode image;
+:Render tile on map;
+:Display in correct position;
+
+:Load next required tile;
+note right
+  Parallel tile loading
+  • Request multiple tiles simultaneously
+  • Max 6 concurrent requests (browser limit)
+  • Priority loading for viewport center tiles
+end note
+
+note left
+  Cache Management
+  TTL (Time To Live)
+  • Heatmap - 1 hour
+  • Satellite - 24 hours
+  • Static layers - 7 days
+
+  Cache invalidation
+  • Manual - DELETE /tiles/cache/clear
+  • Automatic - Check timestamp on read
+  • On data update - Invalidate related tiles
+
+  Cache size limits
+  • Max cache size - 10 GB
+  • LRU eviction when full
+  • Clean old tiles (>30 days)
+end note
+
+note right
+  Performance Metrics
+
+  Tile generation time
+  • Cache hit - ~5ms disk read
+  • Point interpolation - ~200-500ms
+  • Raster resampling - ~100-300ms
+  • PNG encoding - ~50-100ms
+  • Total uncached - ~350-900ms
+
+  Optimization techniques
+  • Pre-generate tiles for common zoom levels
+  • Batch generate tiles for region
+  • Use lower resolution source data for low zoom
+  • Parallel tile generation with multiprocessing
+  • Compression with PNG optimization
+
+  Tile coordinate ranges
+  • Zoom 0 - 1 tile whole world
+  • Zoom 5 - 1024 tiles
+  • Zoom 8 - 65,536 tiles
+  • Zoom 10 - 1,048,576 tiles
+  • Zoom 15 - 1,073,741,824 tiles
+
+  For India coverage at zoom 8
+  • Bounds - 6-37degN, 68-98degE
+  • Tiles needed - ~200-300 tiles
+end note
+
+stop
+
+@enduml

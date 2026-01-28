@@ -1,0 +1,380 @@
+@startuml AQI Calculation Flow
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam linetype ortho
+
+title AetherScan - CPCB AQI Calculation Algorithm (Detailed)
+
+|Input|
+start
+:Raw pollutant measurements;
+note right
+  Input measurements:  {
+    "pm25": 45.2,    # ug/m3
+    "pm10": 88.1,    # ug/m3
+    "no2": 32.5,     # ug/m3
+    "so2": 15.3,     # ug/m3
+    "co": 1.2,       # mg/m3
+    "o3": 28.7       # ug/m3
+  }
+end note
+
+|core/aqi_calculator.py|
+:Class: AQICalculator;
+
+:Function: calculate_aqi(measurements: dict);
+
+:Initialize sub-indices dictionary;
+note right
+  sub_indices = {}
+end note
+
+:Loop through each pollutant;
+
+split
+  partition "PM2.5 Sub-Index" {
+    :Get PM2.5 value (ug/m3);
+
+    :Find applicable breakpoint range;
+    note right
+      CPCB PM2.5 Breakpoints:
+      | Conc Range (ug/m3) | AQI Range | Category |
+      | 0 - 30             | 0 - 50    | Good |
+      | 31 - 60            | 51 - 100  | Satisfactory |
+      | 61 - 90            | 101 - 200 | Moderate |
+      | 91 - 120           | 201 - 300 | Poor |
+      | 121 - 250          | 301 - 400 | Very Poor |
+      | 250+               | 401 - 500 | Severe |
+    end note
+
+    if (value <= 30) then
+      :BP_Lo = 0, BP_Hi = 30;
+      :I_Lo = 0, I_Hi = 50;
+    elseif (value <= 60) then
+      :BP_Lo = 31, BP_Hi = 60;
+      :I_Lo = 51, I_Hi = 100;
+    elseif (value <= 90) then
+      :BP_Lo = 61, BP_Hi = 90;
+      :I_Lo = 101, I_Hi = 200;
+    elseif (value <= 120) then
+      :BP_Lo = 91, BP_Hi = 120;
+      :I_Lo = 201, I_Hi = 300;
+    elseif (value <= 250) then
+      :BP_Lo = 121, BP_Hi = 250;
+      :I_Lo = 301, I_Hi = 400;
+    else
+      :BP_Lo = 250, BP_Hi = 380;
+      :I_Lo = 401, I_Hi = 500;
+    endif
+
+    :Calculate sub-index;
+    note right
+      AQI Formula:
+      I = ((I_Hi - I_Lo) / (BP_Hi - BP_Lo))
+          * (C - BP_Lo) + I_Lo
+
+      Where:
+      • I = Sub-index for pollutant
+      • C = Pollutant concentration
+      • BP_Lo = Lower breakpoint
+      • BP_Hi = Upper breakpoint
+      • I_Lo = Lower AQI
+      • I_Hi = Upper AQI
+    end note
+
+    :I_pm25 = ((I_Hi - I_Lo) / (BP_Hi - BP_Lo))\n           * (value - BP_Lo) + I_Lo;
+
+    :Round to integer;
+    :sub_indices["pm25"] = I_pm25;
+  }
+
+split again
+  partition "PM10 Sub-Index" {
+    :Get PM10 value (ug/m3);
+
+    note right
+      CPCB PM10 Breakpoints:
+      | Conc Range (ug/m3) | AQI Range |
+      | 0 - 50             | 0 - 50    |
+      | 51 - 100           | 51 - 100  |
+      | 101 - 250          | 101 - 200 |
+      | 251 - 350          | 201 - 300 |
+      | 351 - 430          | 301 - 400 |
+      | 430+               | 401 - 500 |
+    end note
+
+    :Find breakpoint range;
+    :Apply AQI formula;
+    :sub_indices["pm10"] = I_pm10;
+  }
+
+split again
+  partition "NO2 Sub-Index" {
+    :Get NO2 value (ug/m3);
+
+    note right
+      CPCB NO2 Breakpoints:
+      | Conc Range (ug/m3) | AQI Range |
+      | 0 - 40             | 0 - 50    |
+      | 41 - 80            | 51 - 100  |
+      | 81 - 180           | 101 - 200 |
+      | 181 - 280          | 201 - 300 |
+      | 281 - 400          | 301 - 400 |
+      | 400+               | 401 - 500 |
+    end note
+
+    :Find breakpoint range;
+    :Apply AQI formula;
+    :sub_indices["no2"] = I_no2;
+  }
+
+split again
+  partition "SO2 Sub-Index" {
+    :Get SO2 value (ug/m3);
+
+    note right
+      CPCB SO2 Breakpoints:
+      | Conc Range (ug/m3) | AQI Range |
+      | 0 - 40             | 0 - 50    |
+      | 41 - 80            | 51 - 100  |
+      | 81 - 380           | 101 - 200 |
+      | 381 - 800          | 201 - 300 |
+      | 801 - 1600         | 301 - 400 |
+      | 1600+              | 401 - 500 |
+    end note
+
+    :Find breakpoint range;
+    :Apply AQI formula;
+    :sub_indices["so2"] = I_so2;
+  }
+
+split again
+  partition "CO Sub-Index" {
+    :Get CO value (mg/m3);
+
+    note right
+      CPCB CO Breakpoints:
+      | Conc Range (mg/m3) | AQI Range |
+      | 0 - 1.0            | 0 - 50    |
+      | 1.1 - 2.0          | 51 - 100  |
+      | 2.1 - 10           | 101 - 200 |
+      | 10.1 - 17          | 201 - 300 |
+      | 17.1 - 34          | 301 - 400 |
+      | 34+                | 401 - 500 |
+    end note
+
+    :Find breakpoint range;
+    :Apply AQI formula;
+    :sub_indices["co"] = I_co;
+  }
+
+split again
+  partition "O3 Sub-Index" {
+    :Get O3 value (ug/m3);
+
+    note right
+      CPCB O3 Breakpoints:
+      | Conc Range (ug/m3) | AQI Range |
+      | 0 - 50             | 0 - 50    |
+      | 51 - 100           | 51 - 100  |
+      | 101 - 168          | 101 - 200 |
+      | 169 - 208          | 201 - 300 |
+      | 209 - 748          | 301 - 400 |
+      | 748+               | 401 - 500 |
+    end note
+
+    :Find breakpoint range;
+    :Apply AQI formula;
+    :sub_indices["o3"] = I_o3;
+  }
+
+end split
+
+:All sub-indices calculated;
+note right
+  Example sub-indices:  {
+    "pm25": 124,
+    "pm10": 156,
+    "no2": 28,
+    "so2": 15,
+    "co": 24,
+    "o3": 35
+  }
+end note
+
+:Determine maximum sub-index;
+note right
+  CPCB Rule:  Overall AQI = Maximum of all sub-indices
+
+  This represents the "worst" pollutant
+  which determines air quality
+end note
+
+:aqi = max(sub_indices.values());
+:dominant_pollutant = pollutant with max sub-index;
+
+:Example: aqi = 156 (from PM10);
+:dominant_pollutant = "pm10";
+
+:Determine AQI category;
+note right
+  CPCB AQI Categories
+  | AQI Range | Category | Color |
+  | 0 - 50    | Good | Green |
+  | 51 - 100  | Satisfactory | Light Green |
+  | 101 - 200 | Moderate | Yellow |
+  | 201 - 300 | Poor | Orange |
+  | 301 - 400 | Very Poor | Red |
+  | 401 - 500 | Severe | Maroon |
+end note
+
+if (aqi <= 50) then
+  :category = "Good";
+  :color = "#00E400";
+  :health_impact = "Minimal";
+
+elseif (aqi <= 100) then
+  :category = "Satisfactory";
+  :color = "#FFFF00";
+  :health_impact = "Minor";
+
+elseif (aqi <= 200) then
+  :category = "Moderate";
+  :color = "#FF7E00";
+  :health_impact = "Breathing discomfort\nfor sensitive groups";
+
+elseif (aqi <= 300) then
+  :category = "Poor";
+  :color = "#FF0000";
+  :health_impact = "Breathing discomfort\nfor most people";
+
+elseif (aqi <= 400) then
+  :category = "Very Poor";
+  :color = "#8F3F97";
+  :health_impact = "Respiratory illness\non prolonged exposure";
+
+else
+  :category = "Severe";
+  :color = "#7E0023";
+  :health_impact = "Affects healthy people,\nseriously impacts those\nwith existing conditions";
+endif
+
+:Generate health recommendations;
+note right
+  Recommendations based on category
+  Good (0-50)
+  • Enjoy outdoor activities
+
+  Satisfactory (51-100)
+  • Enjoy outdoor activities
+  • Sensitive groups should consider
+    limiting prolonged outdoor exertion
+
+  Moderate (101-200)
+  • Close windows to avoid outdoor air
+  • Sensitive groups should reduce
+    outdoor activities
+
+  Poor (201-300)
+  • Avoid outdoor activities
+  • Use air purifiers indoors
+  • Wear N95 masks if going outside
+
+  Very Poor (301-400)
+  • Stay indoors
+  • Keep windows closed
+  • Use air purifiers
+  • Avoid all outdoor activities
+
+  Severe (401-500)
+  • Emergency conditions
+  • Avoid all outdoor activities
+  • Stay indoors with purifiers
+  • Seek medical help if symptomatic
+end note
+
+:Build AQIResult object;
+note right
+  Output structure:  {
+    "aqi": 156,
+    "category": "Moderate",
+    "color": "#FF7E00",
+    "dominant_pollutant": "pm10",
+    "pollutants": {
+      "pm25": {
+        "value": 45.2,
+        "unit": "ug/m3",
+        "sub_index": 124,
+        "category": "Moderate"
+      },
+      "pm10": {
+        "value": 88.1,
+        "unit": "ug/m3",
+        "sub_index": 156,
+        "category": "Moderate"
+      },
+      "no2": {
+        "value": 32.5,
+        "unit": "ug/m3",
+        "sub_index": 28,
+        "category": "Good"
+      },
+      "so2": {
+        "value": 15.3,
+        "unit": "ug/m3",
+        "sub_index": 15,
+        "category": "Good"
+      },
+      "co": {
+        "value": 1.2,
+        "unit": "mg/m3",
+        "sub_index": 24,
+        "category": "Good"
+      },
+      "o3": {
+        "value": 28.7,
+        "unit": "ug/m3",
+        "sub_index": 35,
+        "category": "Good"
+      }
+    },
+    "health_impact": "Breathing discomfort for sensitive groups",
+    "recommendations": [
+      "Close windows to avoid outdoor air",
+      "Sensitive groups should reduce outdoor activities",
+      "Consider using air purifiers"
+    ],
+    "timestamp": "2026-01-09T10:30:00Z"
+  }
+end note
+
+:Return AQIResult;
+
+note right
+  Additional Calculations
+
+  Missing Data Handling
+  • If pollutant value is null or missing, skip that sub-index
+  • AQI calculated from available pollutants only
+  • Minimum 1 pollutant required
+
+  Data Quality Checks
+  • Negative values set to 0
+  • Unrealistic values greater than 10x max are flagged
+  • Stale data older than 24hrs shows warning
+
+  Averaging Periods
+  • PM2.5, PM10 - 24-hour average
+  • NO2, SO2 - 24-hour average
+  • CO - 8-hour average
+  • O3 - 8-hour average
+
+  Standards
+  Based on CPCB Central Pollution Control Board
+  National Ambient Air Quality Standards NAAQS
+end note
+
+stop
+
+@enduml

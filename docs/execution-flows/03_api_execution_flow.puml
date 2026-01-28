@@ -1,0 +1,232 @@
+@startuml API Request Execution Flow
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam linetype ortho
+
+title AetherScan Backend - API Request Handling Flow
+
+|Frontend Client|
+start
+:User action triggers API call;
+
+|lib/api.ts|
+:aqiAPI.calculate with lat, lon, source;
+note right
+  Function signature:
+  calculate with latitude, longitude, source
+
+  Defaults:
+  source = auto
+end note
+
+:Build request POST /aqi/calculate;
+note right
+  Request body:
+  latitude: 28.6139
+  longitude: 77.2090
+  source: auto
+end note
+
+:axios.post to backend;
+
+|FastAPI Server|
+:Receive POST /aqi/calculate;
+:CORS middleware validation;
+
+if (Origin allowed?) then (yes)
+  :Add CORS headers;
+else (no)
+  :Return 403 Forbidden;
+  stop
+endif
+
+|routes/aqi.py|
+:Route handler @router.post calculate;
+:Parse request body with Pydantic validation;
+note right
+  Request model:
+  class AQIRequest BaseModel
+    latitude float
+    longitude float
+    source str = auto
+
+  Validation:
+  latitude: -90 to 90
+  longitude: -180 to 180
+  source: aqicn or openaq or auto
+end note
+
+if (Validation passed?) then (yes)
+  :Extract lat, lon, source;
+else (no)
+  :Return 422 Unprocessable Entity;
+  stop
+endif
+
+if (source == auto) then (yes)
+  :Try AQICN first;
+  :Get app.state.aqicn_service;
+  |data_sources/aqicn_service.py|
+  :Build AQICN URL;
+
+  :async with aiohttp.get URL;
+  if (Response 200?) then (yes)
+    :Parse JSON response;
+    if (status == ok?) then (yes)
+      :Extract AQI data;
+    else (no)
+      :Log AQICN returned error;
+      :Fallback to OpenAQ;
+      |data_sources/openaq_loader.py|
+      :Get app.state.openaq_service;
+      :Build OpenAQ URL;
+
+      :async with aiohttp.get URL;
+      if (Response 200?) then (yes)
+        :Parse JSON response;
+        if (results exist?) then (yes)
+          :Extract measurements PM2.5 PM10 NO2 SO2 CO O3;
+
+          |core/aqi_calculator.py|
+          :Call calculate_aqi with measurements;
+          note right
+            See 08_aqi_calculation_flow.puml details
+          end note
+          :Return calculated AQI;
+        else (no)
+          :Return 404 No data available;
+          stop
+        endif
+      else (no)
+        :Return 503 Service unavailable;
+        stop
+      endif
+    endif
+  else (no)
+    :Log AQICN request failed;
+    :Fallback to OpenAQ;
+    |data_sources/openaq_loader.py|
+    :Get app.state.openaq_service;
+    :Build OpenAQ URL;
+
+    :async with aiohttp.get URL;
+    if (Response 200?) then (yes)
+      :Parse JSON response;
+      if (results exist?) then (yes)
+        :Extract measurements PM2.5 PM10 NO2 SO2 CO O3;
+
+        |core/aqi_calculator.py|
+        :Call calculate_aqi with measurements;
+        note right
+          See 08_aqi_calculation_flow.puml details
+        end note
+        :Return calculated AQI;
+      else (no)
+        :Return 404 No data available;
+        stop
+      endif
+    else (no)
+      :Return 503 Service unavailable;
+      stop
+    endif
+  endif
+else if (source == aqicn) then
+  :Use AQICN only;
+else if (source == openaq) then
+  :Use OpenAQ only;
+endif
+
+|routes/aqi.py|
+:Apply quantum optimization;
+|quantum/processor.py|
+:Get app.state.quantum;
+:Encode AQI data to quantum state;
+:Apply quantum circuit;
+:Measure and decode;
+note right
+  Quantum processing:
+  Enhances prediction accuracy
+  Optimizes pattern recognition
+  Refines interpolation
+  Simulated on classical hardware
+end note
+:Return optimized AQI data;
+
+|routes/aqi.py|
+:Format response;
+note right
+  Response schema:
+  class AQIResult BaseModel
+    aqi int
+    category str
+    dominant_pollutant str
+    pollutants dict
+    station dict
+    recommendations list of str
+    timestamp str
+    source str
+
+  Example output format:
+  aqi: 156
+  category: Moderate
+  dominant_pollutant: pm25
+  pollutants with values
+  station with name location distance
+  recommendations health advice list
+  timestamp ISO format
+  source: aqicn
+end note
+
+:Return Response 200 JSON;
+
+|FastAPI Server|
+:Serialize response to JSON;
+:Add response headers;
+:Send HTTP response;
+
+|lib/api.ts|
+:Receive response;
+:axios interceptor processing;
+
+if (Response OK?) then (yes)
+  :return response.data;
+else (no)
+  :Throw error with message;
+  note right
+    Error handling:
+    Network error
+    404 No data available
+    422 Show validation errors
+    500 Server error
+  end note
+  stop
+endif
+
+|Frontend Component|
+:Update state with AQI data;
+:Trigger re-render;
+:Display AQI on map and UI;
+
+note right
+  Other AQI endpoints
+
+  GET /aqi/forecast
+  Input - lat, lon, days 1-7
+  Output - Daily AQI predictions
+  Source - AQICN forecast API
+
+  GET /aqi/stations/search
+  Input - query location name
+  Output - Matching stations list
+  Uses - AQICN search API
+
+  GET /aqi/stations/nearby
+  Input - lat, lon, radius km
+  Output - Stations within radius
+  Uses - Haversine distance calc
+end note
+
+stop
+
+@enduml

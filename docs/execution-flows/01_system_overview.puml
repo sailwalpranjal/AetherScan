@@ -1,0 +1,111 @@
+@startuml AetherScan System Overview
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 10
+skinparam packageStyle rectangle
+skinparam nodesep 80
+skinparam ranksep 80
+
+title AetherScan - Complete System Architecture & Execution Flow
+
+legend top left
+  |= Symbol |= Meaning |
+  | [[02_backend_startup.puml{Details}]] | Drill-down link |
+  | -> | Sync call |
+  | => | Async call |
+endlegend
+
+package "USER" {
+  actor User
+  rectangle Browser #LightGray
+}
+
+package "FRONTEND\nNext.js/React" {
+  rectangle "[[04_frontend_startup.puml{page.tsx}]]" as Frontend #LightBlue
+  rectangle "API Client" as APIClient #LightCyan
+}
+
+package "BACKEND\nFastAPI/Python" {
+  rectangle "[[02_backend_startup.puml{main.py}]]" as Backend #LightGreen
+
+  together {
+    rectangle "/aqi/*" as AQIRoute #Wheat
+    rectangle "/layers/*" as LayersRoute #Wheat
+    rectangle "/tiles/*" as TilesRoute #Wheat
+    rectangle "/quantum/*" as QuantumRoute #Wheat
+  }
+
+  together {
+    rectangle "[[08_aqi_calculation_flow.puml{AQI Calc}]]" as AQICalc #LightYellow
+    rectangle "[[07_layer_rendering_pipeline.puml{IDW}]]" as IDW #LightYellow
+    rectangle "[[11_quantum_processing_flow.puml{Quantum Processor}]]" as Quantum #LightYellow
+  }
+
+  rectangle "[[06_data_source_integration.puml{Data Sources}]]" as DataSources #Lavender
+  database "[[10_database_operations.puml{SQLite}]]" as DB #LightGray
+}
+
+package "EXTERNAL APIs" {
+  cloud AQICN #Pink
+  cloud OpenAQ #Pink
+  cloud "NASA" #Pink
+}
+
+' Vertical Flow
+User -down-> Browser : 1. Opens app
+Browser -down-> Frontend : 2. Load React
+Frontend -down-> Backend : 3. Initial API calls
+
+' API Flow
+Frontend -down-> APIClient : 4. User action
+APIClient -right-> AQIRoute : 5. POST /aqi/calculate
+APIClient -right-> LayersRoute : 6. GET /layers/*
+APIClient -right-> TilesRoute : 7. GET /tiles/*
+APIClient -right-> QuantumRoute : 8. POST /quantum/process
+
+' Backend Processing
+AQIRoute -down-> AQICalc : 9. Calculate AQI
+AQIRoute -down-> DataSources : 10. Fetch data
+LayersRoute -down-> IDW : 11. Interpolate
+QuantumRoute -down-> Quantum : 12. Quantum optimize
+
+' External Data
+DataSources -right-> AQICN : 13a. Primary AQI
+DataSources -right-> OpenAQ : 13b. Fallback
+DataSources -right-> NASA : 13c. Satellite
+
+' Database
+AQICalc -down-> DB : 14. Store
+LayersRoute -down-> DB : 15. Query
+
+' Response
+APIClient -left-> Frontend : 16. Update UI
+Frontend -up-> Browser : 17. Render
+Browser -up-> User : 18. Display
+
+note right of Backend
+  **Startup**
+  • Init FastAPI
+  • Create DB
+  • Load services
+  • Start quantum processor
+end note
+
+note right of Quantum
+  **Quantum Processing**
+  • AQI prediction optimization
+  • Spatial interpolation enhancement
+  • Pattern recognition acceleration
+  • Data preprocessing
+  (IBM Qiskit-based)
+end note
+
+note right of DataSources
+  **13 Data Sources**
+  AQICN, OpenAQ, NASA FIRMS,
+  NASA Satellite, OpenWeather,
+  OSM, WorldClim, WorldPop,
+  Power Plants, Census, OGD India
+end note
+
+@enduml
