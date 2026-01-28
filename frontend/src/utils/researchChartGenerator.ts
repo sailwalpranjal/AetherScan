@@ -1736,7 +1736,7 @@ export function createEmissionSourceSankey(pollutants: Record<string, number>): 
  * 25. ADVANCED: Data Quality Score Gauge
  * Visual indicator of overall data quality
  */
-export function createDataQualityGauge(dataQualityScore: number): ChartConfiguration {
+export function createDataQualityGauge(dataQualityScore: number): ChartConfiguration<'doughnut'> {
   const maxScore = 100
   let color = CHART_COLORS.green
   if (dataQualityScore < 50) color = CHART_COLORS.red
@@ -1760,7 +1760,7 @@ export function createDataQualityGauge(dataQualityScore: number): ChartConfigura
           display: true,
           text: `Data Quality Score: ${dataQualityScore}%`,
           padding: 20,
-          font: { size: 14, weight: 'bold' },
+          font: { size: 14, weight: 'bold' as const },
         },
         legend: { display: false },
         tooltip: { enabled: false },
