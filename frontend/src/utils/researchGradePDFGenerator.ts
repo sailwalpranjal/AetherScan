@@ -1269,7 +1269,7 @@ async function addMeteorologyAnalysis(
   const dispersalSummary = [
     `Dispersal Status: ${dispersalAnalysis.staying ? 'POLLUTION STAYING' : 'POLLUTION DISPERSING'}`,
     `Index: ${dispersalAnalysis.dispersalIndex}/100 (${dispersalAnalysis.category.replace('_', ' ').toUpperCase()})`,
-    `Wind Speed: ${meteoData.windSpeed.toFixed(1)} m/s - ${dispersalAnalysis.windSpeed < 2 ? 'Insufficient for dispersal' : dispersalAnalysis.windSpeed < 4 ? 'Moderate dispersal' : 'Good dispersal'}`,
+    `Wind Speed: ${meteoData.windSpeed.toFixed(1)} m/s - ${meteoData.windSpeed < 2 ? 'Insufficient for dispersal' : meteoData.windSpeed < 4 ? 'Moderate dispersal' : 'Good dispersal'}`,
     '',
   ]
   yPos = addSafeText(pdf, dispersalSummary, MARGIN, yPos, MAX_LINE_WIDTH)
@@ -1559,7 +1559,7 @@ async function addFireDetectionAnalysis(
       yPos = addSafeText(pdf, ['Source: NASA FIRMS VIIRS/MODIS (7-day lookback)'], MARGIN, yPos, MAX_LINE_WIDTH)
       yPos += 3
 
-      const fireTimelineChart = createFireTimelineChart(fires)
+      const fireTimelineChart = createFireTimelineChart(fires.map(f => ({ acq_date: f.acq_date, confidence: String(f.confidence) })))
       const fireTimelineImg = await generateChartImage(fireTimelineChart, 600, 360)
       pdf.addImage(fireTimelineImg, 'PNG', MARGIN, yPos, CHART_WIDTH, CHART_HEIGHT)
       yPos += CHART_HEIGHT + 8
