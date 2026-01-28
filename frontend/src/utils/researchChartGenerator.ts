@@ -1142,9 +1142,8 @@ export function createFireAQICorrelationChart(
  * 16. ADVANCED: AQI Gauge Chart - Speedometer Style
  * Professional dashboard-style gauge showing current AQI
  */
-export function createAQIGaugeChart(aqi: number): ChartConfiguration {
+export function createAQIGaugeChart(aqi: number): ChartConfiguration<'doughnut'> {
   const maxAQI = 500
-  const percentage = (aqi / maxAQI) * 100
 
   // Determine color based on AQI category
   let color = CHART_COLORS.green
@@ -1171,7 +1170,7 @@ export function createAQIGaugeChart(aqi: number): ChartConfiguration {
           display: true,
           text: `Current AQI: ${aqi}`,
           padding: 20,
-          font: { size: 16, weight: 'bold' },
+          font: { size: 16, weight: 'bold' as const },
         },
         legend: { display: false },
         tooltip: { enabled: false },
