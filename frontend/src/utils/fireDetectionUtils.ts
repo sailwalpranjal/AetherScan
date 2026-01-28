@@ -392,7 +392,7 @@ export function analyzeFireImpact(
   const recommendations: string[] = []
 
   // Analyze correlation
-  if (summary.within25km === 0) {
+  if (summary.firesByDistance.within25km === 0) {
     correlationWithAQI = 'none'
     likelyContribution = 0
     explanation = `No fire detections within 25km of facility. Current AQI (${aqi}) is not influenced by biomass burning. PM2.5 levels (${pm25.toFixed(1)} μg/m³) are primarily from industrial/vehicular emissions.`
@@ -400,7 +400,7 @@ export function analyzeFireImpact(
   } else if (upwindFires === 0) {
     correlationWithAQI = 'weak'
     likelyContribution = 5
-    explanation = `${summary.within25km} fire detections within 25km, but all are downwind. Current wind direction (${windDirection}°) is carrying facility emissions away from fire locations. Fire contribution to local AQI (${aqi}) is minimal (<5%).`
+    explanation = `${summary.firesByDistance.within25km} fire detections within 25km, but all are downwind. Current wind direction (${windDirection}°) is carrying facility emissions away from fire locations. Fire contribution to local AQI (${aqi}) is minimal (<5%).`
     recommendations.push('Monitor for wind direction changes')
     recommendations.push('Downwind areas may experience combined pollution from facility and fires')
   } else if (upwindFires >= 5 && aqi > 150) {
@@ -421,7 +421,7 @@ export function analyzeFireImpact(
   } else {
     correlationWithAQI = 'weak'
     likelyContribution = 10
-    explanation = `Weak correlation: ${summary.within25km} fires detected, ${upwindFires} upwind. Current AQI (${aqi}) and PM2.5 (${pm25.toFixed(1)} μg/m³) are moderately influenced by fires (~10%), but industrial/urban sources are dominant.`
+    explanation = `Weak correlation: ${summary.firesByDistance.within25km} fires detected, ${upwindFires} upwind. Current AQI (${aqi}) and PM2.5 (${pm25.toFixed(1)} μg/m³) are moderately influenced by fires (~10%), but industrial/urban sources are dominant.`
     recommendations.push('Continue monitoring fire activity')
     recommendations.push('Focus on local emission control measures')
   }
