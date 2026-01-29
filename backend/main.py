@@ -102,7 +102,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AetherScan API",
     description="High-performance pollution and AQI mapping system for India",
-    version="1.0.0",
+    version="1.0.1",
     lifespan=lifespan
 )
 
