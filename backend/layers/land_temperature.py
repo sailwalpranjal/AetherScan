@@ -24,9 +24,9 @@ async def get_land_temperature_layer() -> Dict:
         # Fetch temperature data from NASA POWER (uses grid across India)
         temp_data = await asyncio.wait_for(
             nasa_power_loader.fetch_temperature_grid_india(
-                grid_spacing=2.0  # 2 degree grid = ~140 points for good coverage
+                grid_spacing=4.0  # 4 degree grid for fast response under 30s timeout
             ),
-            timeout=180.0  # 3 minute timeout
+            timeout=25.0  # 25 second timeout (Render free tier limit is 30s)
         )
 
         if not temp_data:

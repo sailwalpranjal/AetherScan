@@ -89,14 +89,14 @@ async def get_wind_climate() -> Dict:
     print("[INFO] Fetching wind climate from NASA POWER API (reduced grid)")
 
     try:
-        # Use very small grid to avoid 429 rate limit (4x4 = 16 API calls)
-        # NASA POWER allows ~50 requests/minute, so 16 is safe
+        # Use small grid for fast response under Render's 30s timeout
+        # With 8-degree spacing: ~4x4 = 16 API calls
         wind_data = await asyncio.wait_for(
             nasa_power_loader.fetch_wind_climate_india(
                 date=None,  # Yesterday's data
-                grid_spacing=6.0  # Larger spacing = fewer points
+                grid_spacing=8.0  # Large spacing for fast response
             ),
-            timeout=120.0  # 2 minute timeout
+            timeout=25.0  # 25 second timeout (Render free tier limit is 30s)
         )
 
         features = []

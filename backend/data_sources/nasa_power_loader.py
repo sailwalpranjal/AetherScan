@@ -132,9 +132,9 @@ class NASAPOWERLoader:
         results = []
 
         # NASA POWER API rate limit: ~50 requests/minute
-        # We'll do batches with delays
-        batch_size = 10
-        delay_between_batches = 2  # seconds
+        # Optimize for Render's 30-second timeout
+        batch_size = 15
+        delay_between_batches = 1  # seconds
 
         for i in range(0, len(grid_points), batch_size):
             batch = grid_points[i:i+batch_size]
