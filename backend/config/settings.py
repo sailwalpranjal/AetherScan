@@ -14,11 +14,11 @@ class Settings(BaseSettings):
     MAPBOX_TOKEN: str = ""
 
     # Database
-    DATABASE_PATH: str = "./cache/aetherscan.db"
+    DATABASE_PATH: str = "/tmp/aetherscan.db" if os.environ.get("VERCEL") or os.environ.get("RENDER") else "./cache/aetherscan.db"
 
     # Cache
-    TILE_CACHE_DIR: str = "./cache/tiles"
-    DATA_CACHE_DIR: str = str(Path(__file__).parent.parent / "cache" / "data")
+    TILE_CACHE_DIR: str = "/tmp/tiles" if os.environ.get("VERCEL") or os.environ.get("RENDER") else "./cache/tiles"
+    DATA_CACHE_DIR: str = "/tmp/data" if os.environ.get("VERCEL") or os.environ.get("RENDER") else str(Path(__file__).parent.parent / "cache" / "data")
     CACHE_EXPIRY_HOURS: int = 24
 
     # API Settings
@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
 
     @property
     def cors_origins_list(self) -> List[str]:

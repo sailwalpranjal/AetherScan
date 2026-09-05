@@ -29,8 +29,8 @@ services:
       - key: CORS_ORIGINS
         sync: false
       - key: DATABASE_PATH
-        value: "./cache/aetherscan.db"
+        value: "/tmp/aetherscan.db"
       - key: TILE_CACHE_DIR
-        value: "./cache/tiles"
+        value: "/tmp/tiles"
       - key: DATA_CACHE_DIR
-        value: "./cache/data"
+        value: "/tmp/data"
