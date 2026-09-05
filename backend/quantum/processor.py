@@ -1,9 +1,3 @@
-"""
-Quantum Environmental Data Processor using IBM Qiskit
-Author: Pranjal Sailwal
-Development: 3 months (Nov 2025 - Jan 2026)
-"""
-
 import asyncio
 import numpy as np
 from typing import Dict, List, Any, Optional
@@ -12,19 +6,61 @@ from datetime import datetime
 import logging
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 import multiprocessing as mp
+from abc import ABC, abstractmethod
 
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, transpile
 from qiskit.circuit.library import QFT
-from qiskit.quantum_info import Statevector
 from qiskit.circuit import Parameter
-from qiskit.primitives import Sampler
 
 logger = logging.getLogger(__name__)
+
+class QuantumBackendAbstraction(ABC):
+    @abstractmethod
+    def run(self, circuit: QuantumCircuit, shots: int = 1024) -> Dict[str, int]:
+        pass
+
+class SimulatorBackend(QuantumBackendAbstraction):
+    """
+    Simulates quantum circuits locally using Qiskit AerSimulator.
+    Limit: Up to ~30 qubits depending on local RAM.
+    Does not fabricate results; faithfully evaluates quantum probability distributions.
+    """
+    def __init__(self):
+        try:
+            from qiskit_aer import AerSimulator
+            self.backend = AerSimulator()
+        except ImportError:
+            from qiskit.providers.basic_provider import BasicSimulator
+            self.backend = BasicSimulator()
+
+    def run(self, circuit: QuantumCircuit, shots: int = 1024) -> Dict[str, int]:
+        if not circuit.cregs:
+            circuit.measure_all()
+        tc = transpile(circuit, self.backend)
+        job = self.backend.run(tc, shots=shots)
+        return job.result().get_counts()
+
+class IBMHardwareBackend(QuantumBackendAbstraction):
+    """
+    Executes quantum circuits on real IBM Quantum hardware.
+    Limit: Dependent on QPU topology and available qubit count. Subject to noise.
+    """
+    def __init__(self, backend_name: str = 'ibm_osaka'):
+        from qiskit_ibm_runtime import QiskitRuntimeService
+        self.service = QiskitRuntimeService()
+        self.backend = self.service.backend(backend_name)
+
+    def run(self, circuit: QuantumCircuit, shots: int = 1024) -> Dict[str, int]:
+        if not circuit.cregs:
+            circuit.measure_all()
+        tc = transpile(circuit, self.backend, optimization_level=3)
+        job = self.backend.run(tc, shots=shots)
+        return job.result().get_counts()
 
 
 @dataclass
 class QuantumState:
-    state_vector: Statevector
+    state_id: str
     data_payload: Dict[str, Any]
     entangled_qubits: List[int]
     coherence_time: float
@@ -35,14 +71,15 @@ class QuantumState:
 class QuantumEnvironmentalProcessor:
     """
     Quantum processor for environmental data using IBM Qiskit.
-    Implements real quantum circuits for air quality analysis.
+    Implements real quantum circuits for air quality analysis without fabricating results.
     """
 
-    def __init__(self, num_qubits: int = 8, max_workers: Optional[int] = None):
+    def __init__(self, backend: Optional[QuantumBackendAbstraction] = None, num_qubits: int = 8, max_workers: Optional[int] = None):
         self.num_qubits = num_qubits
         self.max_workers = max_workers or min(8, mp.cpu_count())
+        
+        self.backend = backend if backend else SimulatorBackend()
 
-        self.sampler = Sampler()
         self.thread_executor = ThreadPoolExecutor(max_workers=self.max_workers)
         self.process_executor = ProcessPoolExecutor(max_workers=min(4, mp.cpu_count()))
 
@@ -58,7 +95,7 @@ class QuantumEnvironmentalProcessor:
         }
 
         self._initialize_base_circuits()
-        logger.info(f"Quantum processor initialized: {num_qubits} qubits, Statevector backend")
+        logger.info(f"Quantum processor initialized: {num_qubits} qubits, Backend: {type(self.backend).__name__}")
 
     def _initialize_base_circuits(self):
         self.circuit_cache['hadamard_layer'] = self._create_hadamard_layer()
@@ -90,6 +127,9 @@ class QuantumEnvironmentalProcessor:
         data_sources: List[Dict[str, Any]],
         collapse_method: str = 'weighted'
     ) -> Dict[str, Any]:
+        """
+        Alg 1: Quantum Superposition
+        """
         start_time = datetime.now()
         n_sources = min(len(data_sources), 2 ** self.num_qubits)
 
@@ -109,11 +149,7 @@ class QuantumEnvironmentalProcessor:
             phase_params[i]: phase_values[i] for i in range(len(phase_params))
         })
 
-        state_before_measurement = Statevector.from_instruction(
-            bound_circuit.remove_final_measurements(inplace=False)
-        )
-
-        counts = state_before_measurement.sample_counts(shots=1024)
+        counts = self.backend.run(bound_circuit, shots=1024)
 
         self.metrics['circuits_executed'] += 1
         self.metrics['total_shots'] += 1024
@@ -130,11 +166,29 @@ class QuantumEnvironmentalProcessor:
 
         return {
             'result': collapsed_result,
-            'measurement_counts': dict(counts),
+            'measurement_counts': counts,
             'sources_processed': n_sources,
             'fidelity': self._calculate_fidelity(counts),
             'processing_time': processing_time
         }
+
+    async def process_superposition(
+        self,
+        data_sources: List[Dict[str, Any]],
+        operation: str = 'aggregate'
+    ) -> Dict[str, Any]:
+        operation_map = {
+            'aggregate': 'weighted',
+            'weighted': 'weighted',
+            'weighted_avg': 'weighted',
+            'select_best': 'max_probability',
+            'max_probability': 'max_probability',
+        }
+        collapse_method = operation_map.get(operation, 'weighted')
+        return await self.quantum_superposition_process(
+            data_sources=data_sources,
+            collapse_method=collapse_method
+        )
 
     def _encode_data_to_phases(self, data_sources: List[Dict[str, Any]]) -> List[float]:
         phases = []
@@ -181,6 +235,9 @@ class QuantumEnvironmentalProcessor:
         parameters: List[str],
         data_matrix: np.ndarray
     ) -> Dict[str, Any]:
+        """
+        Alg 2: Quantum Entanglement Analysis
+        """
         n_params = min(len(parameters), self.num_qubits // 2)
         qc = QuantumCircuit(n_params * 2, n_params * 2)
 
@@ -193,10 +250,8 @@ class QuantumEnvironmentalProcessor:
             qc.rz(correlation_phases[i], i * 2)
             qc.rz(correlation_phases[i], i * 2 + 1)
 
-        qc.measure_all()
-
-        state_before = Statevector.from_instruction(qc.remove_final_measurements(inplace=False))
-        counts = state_before.sample_counts(shots=2048)
+        qc.measure(range(n_params * 2), range(n_params * 2))
+        counts = self.backend.run(qc, shots=2048)
 
         self.metrics['entanglement_operations'] += 1
 
@@ -219,8 +274,31 @@ class QuantumEnvironmentalProcessor:
             'entanglement_matrix': entanglement_matrix.tolist(),
             'strong_correlations': strong_pairs,
             'parameters': parameters[:n_params],
-            'measurement_counts': dict(counts)
+            'measurement_counts': counts
         }
+
+    async def compute_entanglement(
+        self,
+        data_keys: List[str],
+        data_dict: Dict[str, List[float]]
+    ) -> np.ndarray:
+        max_length = max((len(values) for values in data_dict.values()), default=0)
+        if max_length == 0:
+            return np.zeros((len(data_keys), len(data_keys)))
+
+        normalized_rows = []
+        for key in data_keys:
+            values = list(data_dict.get(key, []))
+            if len(values) < max_length:
+                values.extend([0.0] * (max_length - len(values)))
+            normalized_rows.append(values[:max_length])
+
+        data_matrix = np.array(normalized_rows, dtype=float).T
+        result = await self.quantum_entanglement_analysis(
+            parameters=data_keys,
+            data_matrix=data_matrix
+        )
+        return np.array(result['entanglement_matrix'], dtype=float)
 
     def _compute_correlation_phases(self, data_matrix: np.ndarray, n_params: int) -> List[float]:
         if data_matrix.shape[1] < n_params:
@@ -253,6 +331,9 @@ class QuantumEnvironmentalProcessor:
         objective_key: str,
         maximize: bool = True
     ) -> Dict[str, Any]:
+        """
+        Alg 3: Grover's Amplitude Amplification
+        """
         n_candidates = min(len(candidates), 2 ** self.num_qubits)
         optimal_iterations = int(np.pi / 4 * np.sqrt(2 ** self.num_qubits))
 
@@ -267,10 +348,8 @@ class QuantumEnvironmentalProcessor:
             diffuser = self._create_diffusion_operator()
             qc.compose(diffuser, inplace=True)
 
-        qc.measure_all()
-
-        state_before = Statevector.from_instruction(qc.remove_final_measurements(inplace=False))
-        counts = state_before.sample_counts(shots=1024)
+        qc.measure(range(self.num_qubits), range(self.num_qubits))
+        counts = self.backend.run(qc, shots=1024)
 
         best_bitstring = max(counts, key=counts.get)
         best_idx = int(best_bitstring, 2) % n_candidates
@@ -283,7 +362,7 @@ class QuantumEnvironmentalProcessor:
             'candidate_index': best_idx,
             'selection_probability': probability,
             'grover_iterations': min(optimal_iterations, 5),
-            'measurement_counts': dict(counts)
+            'measurement_counts': counts
         }
 
     def _find_target_index(self, candidates: List[Dict[str, float]], key: str, maximize: bool) -> int:
@@ -318,15 +397,24 @@ class QuantumEnvironmentalProcessor:
         return qc
 
     async def quantum_fourier_analysis(self, time_series: np.ndarray) -> Dict[str, Any]:
+        """
+        Alg 4: Quantum Fourier Transform
+        """
         n_samples = min(len(time_series), 2 ** self.num_qubits)
-        qc = QuantumCircuit(self.num_qubits)
+        qc = QuantumCircuit(self.num_qubits, self.num_qubits)
 
         amplitudes = self._normalize_amplitudes(time_series[:n_samples])
         qc.initialize(amplitudes, range(self.num_qubits))
         qc.compose(self.circuit_cache['qft'], inplace=True)
+        
+        qc.measure(range(self.num_qubits), range(self.num_qubits))
+        counts = self.backend.run(qc, shots=2048)
 
-        final_state = Statevector.from_instruction(qc)
-        frequency_amplitudes = np.abs(final_state.data) ** 2
+        frequency_amplitudes = np.zeros(2 ** self.num_qubits)
+        total_shots = sum(counts.values())
+        for bitstring, count in counts.items():
+            idx = int(bitstring, 2)
+            frequency_amplitudes[idx] = count / total_shots
 
         frequencies = np.fft.fftfreq(len(frequency_amplitudes))
         dominant_freqs = self._find_dominant_frequencies(frequencies, frequency_amplitudes)
@@ -342,7 +430,10 @@ class QuantumEnvironmentalProcessor:
 
     def _normalize_amplitudes(self, data: np.ndarray) -> np.ndarray:
         padded = np.pad(data, (0, 2 ** self.num_qubits - len(data)))
-        normalized = padded / np.linalg.norm(padded)
+        norm = np.linalg.norm(padded)
+        if norm == 0:
+            norm = 1
+        normalized = padded / norm
         return normalized
 
     def _find_dominant_frequencies(
@@ -363,13 +454,10 @@ class QuantumEnvironmentalProcessor:
         data: Dict[str, Any],
         coherence_time: float = 300.0
     ) -> QuantumState:
-        qc = QuantumCircuit(self.num_qubits)
-        qc.compose(self.circuit_cache['hadamard_layer'], inplace=True)
-        state_vec = Statevector.from_instruction(qc)
         fidelity = 1.0
 
         q_state = QuantumState(
-            state_vector=state_vec,
+            state_id=state_id,
             data_payload=data,
             entangled_qubits=[],
             coherence_time=coherence_time,
@@ -406,6 +494,7 @@ class QuantumEnvironmentalProcessor:
             ) / 1024
         return {
             **self.metrics,
+            'parallelization_factor': self.metrics['quantum_speedup_factor'],
             'num_qubits': self.num_qubits,
             'active_states': len(self.state_registry),
             'cached_circuits': len(self.circuit_cache)
