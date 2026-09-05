@@ -2,9 +2,14 @@
 
 A production-grade environmental monitoring platform providing real-time air quality analysis, satellite data visualization, and research-grade PDF report generation. Integrates multiple data sources with quantum-enhanced processing capabilities.
 
-**Project Duration:** 6 months (August 2025 - January 2026)
-**Team Size:** 4 developers
 **Technology Stack:** Next.js 14, FastAPI, IBM Qiskit, MapLibre GL JS
+
+## Current Status
+
+- Backend runtime target: Python 3.11. The backend dependencies and deployment files are configured for `python-3.11.x`.
+- Frontend runtime target: Node.js 18+ recommended for Next.js 14.
+- Quantum endpoints are optional. They are enabled when Qiskit is installed successfully; the rest of the platform still runs without them.
+- When external API keys are unavailable, the app uses graceful fallbacks where possible so the core map and AQI workflows still remain usable for development and demos.
 
 ---
 

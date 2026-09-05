@@ -1,6 +1,6 @@
 """Location search and geocoding routes"""
 from fastapi import APIRouter, HTTPException, Query
-from typing import Dict, List
+from typing import Dict, Optional
 import httpx
 from config.settings import settings
 
@@ -8,7 +8,8 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 @router.get("/location")
 async def search_location(
-    query: str = Query(..., min_length=2, description="Location name or address to search"),
+    query: Optional[str] = Query(None, min_length=2, description="Location name or address to search"),
+    q: Optional[str] = Query(None, min_length=2, description="Alias for query"),
     limit: int = Query(5, ge=1, le=10, description="Maximum number of results")
 ) -> Dict:
     """
@@ -21,11 +22,15 @@ async def search_location(
     Returns:
         List of matching locations with coordinates and details
     """
+    search_term = (query or q or "").strip()
+    if len(search_term) < 2:
+        raise HTTPException(status_code=422, detail="Query must be at least 2 characters long")
+
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             # Use Nominatim API (free, no API key required)
             params = {
-                'q': query,
+                'q': search_term,
                 'format': 'json',
                 'limit': limit,
                 'countrycodes': 'in',  # Restrict to India
@@ -61,11 +66,13 @@ async def search_location(
                 })
 
             return {
-                'query': query,
+                'query': search_term,
                 'count': len(locations),
                 'results': locations
             }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
@@ -118,13 +125,16 @@ async def reverse_geocode(
                 'type': result.get('type', '')
             }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Reverse geocoding failed: {str(e)}")
 
 
 @router.get("/industries")
 async def search_industries(
-    query: str = Query(..., min_length=2, description="Industry name to search"),
+    query: Optional[str] = Query(None, min_length=2, description="Industry name to search"),
+    q: Optional[str] = Query(None, min_length=2, description="Alias for query"),
     limit: int = Query(5, ge=1, le=20, description="Maximum number of results")
 ) -> Dict:
     """
@@ -137,11 +147,15 @@ async def search_industries(
     Returns:
         List of matching industrial facilities
     """
+    search_term = (query or q or "").strip()
+    if len(search_term) < 2:
+        raise HTTPException(status_code=422, detail="Query must be at least 2 characters long")
+
     try:
         from layers import power_plants, industry_overlay, refineries
 
         results = []
-        query_lower = query.lower()
+        query_lower = search_term.lower()
 
         # Search power plants
         try:
@@ -217,10 +231,12 @@ async def search_industries(
         results = results[:limit]
 
         return {
-            'query': query,
+            'query': search_term,
             'count': len(results),
             'results': results
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Industry search failed: {str(e)}")

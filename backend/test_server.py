@@ -1,6 +1,7 @@
 """Test server startup"""
 import asyncio
 import sys
+import httpx
 
 async def test_startup():
     print("Testing AetherScan Backend Startup...\n")
@@ -40,21 +41,35 @@ async def test_startup():
 
         # Test FastAPI app creation
         print("\n[5/5] Testing FastAPI app...")
-        from fastapi import FastAPI
-        from fastapi.testclient import TestClient
         from main import app
-        client = TestClient(app)
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            root_response, health_response, info_response = await asyncio.gather(
+                client.get("/"),
+                client.get("/health"),
+                client.get("/api/info"),
+            )
 
-        # Test root endpoint
-        response = client.get("/")
-        if response.status_code == 200:
-            data = response.json()
+        if root_response.status_code == 200:
+            data = root_response.json()
             print(f"  [OK] API responding")
             print(f"    - Name: {data.get('name')}")
             print(f"    - Version: {data.get('version')}")
             print(f"    - Endpoints: {len(data.get('endpoints', {}))}")
         else:
-            print(f"  [ERROR] API error: {response.status_code}")
+            print(f"  [ERROR] Root API error: {root_response.status_code}")
+
+        if health_response.status_code == 200:
+            print(f"  [OK] Health endpoint responding")
+            print(f"    - Status: {health_response.json().get('status')}")
+        else:
+            print(f"  [ERROR] Health endpoint error: {health_response.status_code}")
+
+        if info_response.status_code == 200:
+            print(f"  [OK] API info endpoint responding")
+            print(f"    - Layers advertised: {len(info_response.json().get('available_layers', []))}")
+        else:
+            print(f"  [ERROR] API info endpoint error: {info_response.status_code}")
 
         await db_manager.close()
 
