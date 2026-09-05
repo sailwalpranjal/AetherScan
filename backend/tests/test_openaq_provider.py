@@ -599,6 +599,101 @@ class TestZeroFakeDataInvariant:
         assert "random.seed" not in source_code
         assert "s_delhi_1" not in source_code
 
+    @pytest.mark.asyncio
+    async def test_downstream_openaq_sensors_layer_zero_fake_data(self):
+        """Verify openaq_sensors consumer layer returns empty FeatureCollection cleanly when API is offline or empty."""
+        from layers.openaq_sensors import get_sensor_locations, _get_fallback_sensor_data
+
+        # Test fallback stub directly
+        assert _get_fallback_sensor_data() == []
+
+        # Test get_sensor_locations when openaq_loader returns []
+        with mock.patch("layers.openaq_sensors.openaq_loader.fetch_stations", new=mock.AsyncMock(return_value=[])):
+            result = await get_sensor_locations()
+            assert result["type"] == "FeatureCollection"
+            assert result["features"] == []
+            assert result["count"] == 0
+            assert result["source"] == "None"
+
+        # Test get_sensor_locations when openaq_loader raises Exception
+        with mock.patch("layers.openaq_sensors.openaq_loader.fetch_stations", new=mock.AsyncMock(side_effect=RuntimeError("OpenAQ API offline"))):
+            result = await get_sensor_locations()
+            assert result["type"] == "FeatureCollection"
+            assert result["features"] == []
+            assert result["count"] == 0
+            assert result["source"] == "None"
+
+        # Test get_sensor_locations with real station data
+        mock_station = [{"latitude": 28.62, "longitude": 77.24, "station_id": "test_1", "name": "Delhi Test", "city": "Delhi", "parameters": ["pm25"]}]
+        with mock.patch("layers.openaq_sensors.openaq_loader.fetch_stations", new=mock.AsyncMock(return_value=mock_station)):
+            result = await get_sensor_locations()
+            assert result["type"] == "FeatureCollection"
+            assert len(result["features"]) == 1
+            assert result["count"] == 1
+            assert result["source"] == "OpenAQ"
+            assert result["features"][0]["geometry"]["coordinates"] == [77.24, 28.62]
+
+    @pytest.mark.asyncio
+    async def test_downstream_state_heatmap_layer_zero_fake_data(self):
+        """Verify state_heatmap consumer layer returns empty FeatureCollection cleanly when API is offline or empty."""
+        from layers.state_heatmap import get_state_wise_pollution, _get_fallback_state_data
+
+        # Test fallback stub directly
+        assert _get_fallback_state_data() == []
+
+        # Test when openaq_loader returns [] and AQICN returns nothing
+        with mock.patch("layers.state_heatmap.openaq_loader.fetch_latest_measurements", new=mock.AsyncMock(return_value=[])):
+            with mock.patch("data_sources.aqicn_service.get_aqicn_service", return_value=None):
+                result = await get_state_wise_pollution()
+                assert result["type"] == "FeatureCollection"
+                assert result["features"] == []
+                assert result["count"] == 0
+                assert result["source"] == "None"
+                assert result["description"] == "State-wise pollution aggregation with AQI"
+
+        # Test when openaq_loader raises Exception and AQICN service raises Exception
+        with mock.patch("layers.state_heatmap.openaq_loader.fetch_latest_measurements", new=mock.AsyncMock(side_effect=RuntimeError("OpenAQ API connection error"))):
+            with mock.patch("data_sources.aqicn_service.get_aqicn_service", side_effect=RuntimeError("AQICN unavailable")):
+                result = await get_state_wise_pollution()
+                assert result["type"] == "FeatureCollection"
+                assert result["features"] == []
+                assert result["count"] == 0
+                assert result["source"] == "None"
+
+    def test_consumer_layer_source_code_cleanliness(self):
+        """Source inspection: Ensure 'import random' and random jitter are purged from consumer layers."""
+        import layers.openaq_sensors as openaq_sensors_mod
+        import layers.state_heatmap as state_heatmap_mod
+        import layers.pollution_heatmap as pollution_heatmap_mod
+        import layers.wind_climate as wind_climate_mod
+        import layers.population_density as population_density_mod
+
+        src_sensors = inspect.getsource(openaq_sensors_mod)
+        src_heatmap = inspect.getsource(state_heatmap_mod)
+        src_pollution = inspect.getsource(pollution_heatmap_mod)
+        src_wind = inspect.getsource(wind_climate_mod)
+        src_pop = inspect.getsource(population_density_mod)
+
+        # openaq_sensors
+        assert "import random" not in src_sensors
+        assert "random.uniform" not in src_sensors
+        assert "random.seed" not in src_sensors
+        assert "Fallback Data" not in src_sensors
+
+        # state_heatmap
+        assert "import random" not in src_heatmap
+        assert "random.randint" not in src_heatmap
+        assert "random.seed" not in src_heatmap
+        assert "FALLBACK_STATE_AQI" not in src_heatmap
+
+        # secondary layers
+        assert "import random" not in src_pollution
+        assert "random.randint" not in src_pollution
+        assert "import random" not in src_wind
+        assert "random.uniform" not in src_wind
+        assert "import random" not in src_pop
+        assert "random.randint" not in src_pop
+
 
 # =============================================================================
 # 7. Pipeline Ingestion Orchestration

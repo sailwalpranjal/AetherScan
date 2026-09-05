@@ -4,76 +4,13 @@ Wind Direction & Climate Layer - USES REAL NASA POWER DATA
 from typing import Dict, List
 from data_sources.nasa_power_loader import nasa_power_loader
 import asyncio
-import random
 
 def _get_fallback_wind_data() -> List[Dict]:
-    """Realistic fallback wind and climate data for India"""
-    random.seed(42)
-
-    features = []
-
-    # Create a grid across India with realistic wind patterns
-    # India's monsoon patterns: SW winds during summer, NE during winter
-    for lat in range(8, 36, 3):  # 6-37 N
-        for lon in range(70, 95, 3):  # 68-98 E
-            # Wind patterns vary by region and season
-            # Using typical winter values
-
-            # Coastal regions have higher wind speeds
-            is_coastal = (
-                (lon < 74 and 15 < lat < 22) or  # West coast
-                (lon > 85 and 10 < lat < 23) or  # East coast
-                (lat < 12)  # Southern tip
-            )
-
-            # Northern plains have different patterns
-            is_northern_plain = (25 < lat < 32 and 75 < lon < 88)
-
-            if is_coastal:
-                wind_speed = random.uniform(3.5, 7.0)
-                wind_direction = random.choice([225, 240, 255, 270])  # SW-W winds
-            elif is_northern_plain:
-                wind_speed = random.uniform(1.5, 4.0)
-                wind_direction = random.choice([290, 300, 315, 330])  # NW winds (winter)
-            else:
-                wind_speed = random.uniform(2.0, 5.0)
-                wind_direction = random.randint(180, 360)
-
-            # Temperature varies by latitude and altitude
-            base_temp = 30 - (lat - 10) * 0.6
-            temp = base_temp + random.uniform(-3, 3)
-
-            # Humidity varies by region
-            if is_coastal:
-                humidity = random.uniform(65, 85)
-            else:
-                humidity = random.uniform(40, 70)
-
-            # Pressure (sea level equivalent)
-            pressure = 101.3 + random.uniform(-1.5, 1.5)
-
-            features.append({
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'Point',
-                    'coordinates': [lon + random.uniform(-0.5, 0.5), lat + random.uniform(-0.5, 0.5)]
-                },
-                'properties': {
-                    'speed': round(wind_speed, 1),
-                    'direction': round(wind_direction, 0),
-                    'temperature': round(temp, 1),
-                    'humidity': round(humidity, 1),
-                    'pressure': round(pressure, 1),
-                    'date': 'Recent',
-                    'source': 'Fallback (Seasonal Average)',
-                    'unit_wind': 'm/s',
-                    'unit_temp': '°C',
-                    'unit_humidity': '%',
-                    'unit_pressure': 'kPa'
-                }
-            })
-
-    return features
+    """
+    Deprecated fallback stub adhering to Zero-Fake-Data invariant.
+    Returns an empty list instead of synthetic wind data.
+    """
+    return []
 
 
 async def get_wind_climate() -> Dict:
@@ -161,39 +98,34 @@ async def get_wind_climate() -> Dict:
                     }
                 })
 
-        # If no data from API, use fallback
-        if not features:
-            print("[INFO] Using fallback wind climate data")
-            features = _get_fallback_wind_data()
-
-        print(f"[OK] Loaded {len(features)} wind climate points")
+        # Zero-Fake-Data Invariant: If no data from API, return empty collection cleanly
+        source = 'NASA POWER' if features else 'None'
+        print(f"[OK] Loaded {len(features)} wind climate points from {source}")
 
         return {
             'type': 'FeatureCollection',
             'features': features,
             'count': len(features),
-            'source': 'NASA POWER' if features and features[0].get('properties', {}).get('source') != 'Fallback (Seasonal Average)' else 'Fallback Data',
+            'source': source,
             'description': 'Wind speed, direction, temperature, humidity',
             'url': 'https://power.larc.nasa.gov/'
         }
 
     except asyncio.TimeoutError:
-        print("[ERROR] NASA POWER API timeout, using fallback")
-        features = _get_fallback_wind_data()
+        print("[ERROR] NASA POWER API timeout")
         return {
             'type': 'FeatureCollection',
-            'features': features,
-            'count': len(features),
-            'source': 'Fallback Data (API Timeout)',
+            'features': [],
+            'count': 0,
+            'source': 'None',
             'description': 'Wind speed, direction, temperature, humidity'
         }
     except Exception as e:
         print(f"[ERROR] Error fetching NASA POWER wind data: {e}")
-        features = _get_fallback_wind_data()
         return {
             'type': 'FeatureCollection',
-            'features': features,
-            'count': len(features),
-            'source': 'Fallback Data',
+            'features': [],
+            'count': 0,
+            'source': 'None',
             'error': str(e)
         }

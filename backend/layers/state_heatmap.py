@@ -3,10 +3,12 @@ State-wise Pollution Heatmap Layer
 Aggregates pollution data by state boundaries
 """
 from typing import Dict, List
+import logging
 from data_sources.openaq_loader import openaq_loader
 from core.aqi_calculator import aqi_calculator
 import numpy as np
-import random
+
+logger = logging.getLogger(__name__)
 
 # State centroids for aggregation (with major cities for matching)
 STATE_DATA = {
@@ -92,31 +94,6 @@ STATE_DATA = {
     },
 }
 
-# Fallback AQI data by state (realistic values)
-FALLBACK_STATE_AQI = {
-    'Delhi': {'aqi': 185, 'pm25': 95, 'pm10': 180},
-    'Maharashtra': {'aqi': 95, 'pm25': 45, 'pm10': 85},
-    'Karnataka': {'aqi': 75, 'pm25': 35, 'pm10': 65},
-    'Tamil Nadu': {'aqi': 85, 'pm25': 40, 'pm10': 75},
-    'Uttar Pradesh': {'aqi': 165, 'pm25': 85, 'pm10': 155},
-    'Gujarat': {'aqi': 115, 'pm25': 55, 'pm10': 105},
-    'Rajasthan': {'aqi': 140, 'pm25': 70, 'pm10': 130},
-    'West Bengal': {'aqi': 125, 'pm25': 60, 'pm10': 115},
-    'Madhya Pradesh': {'aqi': 110, 'pm25': 52, 'pm10': 100},
-    'Telangana': {'aqi': 90, 'pm25': 42, 'pm10': 80},
-    'Andhra Pradesh': {'aqi': 80, 'pm25': 38, 'pm10': 70},
-    'Bihar': {'aqi': 155, 'pm25': 78, 'pm10': 145},
-    'Odisha': {'aqi': 95, 'pm25': 45, 'pm10': 85},
-    'Kerala': {'aqi': 55, 'pm25': 25, 'pm10': 50},
-    'Haryana': {'aqi': 150, 'pm25': 75, 'pm10': 140},
-    'Punjab': {'aqi': 145, 'pm25': 72, 'pm10': 135},
-    'Jharkhand': {'aqi': 120, 'pm25': 58, 'pm10': 110},
-    'Chhattisgarh': {'aqi': 105, 'pm25': 50, 'pm10': 95},
-    'Assam': {'aqi': 85, 'pm25': 40, 'pm10': 75},
-    'Uttarakhand': {'aqi': 70, 'pm25': 32, 'pm10': 60},
-}
-
-
 def _match_city_to_state(city_name: str) -> str:
     """Match a city name to its state"""
     city_lower = city_name.lower().strip()
@@ -130,53 +107,12 @@ def _match_city_to_state(city_name: str) -> str:
 
 
 def _get_fallback_state_data() -> List[Dict]:
-    """Generate fallback state-wise pollution data"""
-    random.seed(42)
-
-    features = []
-    for state_name, data in STATE_DATA.items():
-        lat, lon = data['centroid']
-        fallback = FALLBACK_STATE_AQI.get(state_name, {'aqi': 100, 'pm25': 50, 'pm10': 90})
-
-        # Add some variation
-        aqi = fallback['aqi'] + random.randint(-15, 15)
-        aqi = max(0, min(500, aqi))
-
-        # Calculate category and color
-        if aqi <= 50:
-            category, color = 'Good', '#00E400'
-        elif aqi <= 100:
-            category, color = 'Moderate', '#FFFF00'
-        elif aqi <= 150:
-            category, color = 'Unhealthy for Sensitive', '#FF7E00'
-        elif aqi <= 200:
-            category, color = 'Unhealthy', '#FF0000'
-        elif aqi <= 300:
-            category, color = 'Very Unhealthy', '#8F3F97'
-        else:
-            category, color = 'Hazardous', '#7E0023'
-
-        features.append({
-            'type': 'Feature',
-            'geometry': {
-                'type': 'Point',
-                'coordinates': [lon, lat]
-            },
-            'properties': {
-                'state': state_name,
-                'aqi': aqi,
-                'category': category,
-                'color': color,
-                'dominant_pollutant': 'PM2.5',
-                'pollutants': {
-                    'pm25': fallback['pm25'] + random.randint(-5, 5),
-                    'pm10': fallback['pm10'] + random.randint(-10, 10)
-                },
-                'source': 'Fallback'
-            }
-        })
-
-    return features
+    """
+    Deprecated fallback stub adhering to Zero-Fake-Data invariant.
+    Returns an empty list instead of synthetic state pollution records.
+    """
+    logger.warning("Zero-Fake-Data: fallback state data requested, returning []")
+    return []
 
 
 async def get_state_wise_pollution() -> Dict:
@@ -191,7 +127,7 @@ async def get_state_wise_pollution() -> Dict:
 
     features = []
     state_data = {}
-    data_source = 'Unknown'
+    data_source = 'None'
 
     # Try OpenAQ first
     try:
@@ -217,7 +153,7 @@ async def get_state_wise_pollution() -> Dict:
                 data_source = 'OpenAQ'
                 print(f"[OK] OpenAQ: Found data for {len(state_data)} states")
     except Exception as e:
-        print(f"[WARN] OpenAQ error: {e}")
+        logger.warning(f"OpenAQ error: {e}")
 
     # If OpenAQ didn't provide enough data, supplement with AQICN
     if len(state_data) < 10:
@@ -253,7 +189,7 @@ async def get_state_wise_pollution() -> Dict:
                     data_source = 'OpenAQ + AQICN'
                     print(f"[OK] AQICN: Supplemented to {len(state_data)} states")
         except Exception as e:
-            print(f"[WARN] AQICN error: {e}")
+            logger.warning(f"AQICN error: {e}")
 
     # Calculate AQI for each state
     for state_name, pollutants in state_data.items():
@@ -312,19 +248,11 @@ async def get_state_wise_pollution() -> Dict:
                 }
             })
 
-    # If no data from APIs, use fallback
+    # Zero-Fake-Data Invariant: If no data from APIs, return empty collection cleanly
     if not features:
-        print("[INFO] Using fallback state pollution data")
-        features = _get_fallback_state_data()
-        data_source = 'Fallback Data'
+        data_source = 'None'
 
-    # Ensure we always have at least some data
-    if not features or len(features) < 5:
-        print("[INFO] Using fallback state pollution data (insufficient API data)")
-        features = _get_fallback_state_data()
-        data_source = 'Fallback Data'
-
-    print(f"[OK] Generated {len(features)} state pollution aggregations")
+    logger.info(f"Returning {len(features)} state pollution aggregations from {data_source}")
 
     return {
         'type': 'FeatureCollection',
