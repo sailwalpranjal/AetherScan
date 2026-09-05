@@ -6,7 +6,6 @@ from typing import Dict, List
 import logging
 from data_sources.openaq_loader import openaq_loader
 from core.aqi_calculator import aqi_calculator
-import numpy as np
 
 logger = logging.getLogger(__name__)
 
