@@ -209,6 +209,15 @@ class OpenAQLoader:
                 print(f"Using cached measurements (age: {cache_age:.1f}s)")
                 return cache_entry['data']
 
+        if not settings.OPENAQ_API_KEY:
+            print("[INFO] OpenAQ API key missing - using deterministic sample fallback data")
+            measurements = self._get_sample_measurements()
+            self._cache[cache_key] = {
+                'data': measurements,
+                'timestamp': datetime.utcnow()
+            }
+            return measurements
+
         session = await self._get_session()
         measurements = []
 
@@ -300,9 +309,8 @@ class OpenAQLoader:
             measurements = []
 
         if not measurements:
-            print("[WARN]  No OpenAQ measurements available - check API key configuration")
-            # Return empty list instead of fallback data
-            measurements = []
+            print("[WARN]  No OpenAQ measurements available - falling back to deterministic sample data")
+            measurements = self._get_sample_measurements()
 
         # Cache the results
         self._cache[cache_key] = {
