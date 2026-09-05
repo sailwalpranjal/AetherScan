@@ -185,12 +185,17 @@ class AQICNService:
             'color': color,
             'dominant_pollutant': dominant_pollutant,
             'station_id': station_id,
+            'station': {
+                'station_id': station_id,
+                'station_name': city_name
+            },
             'location': city_name,
             'city': city_name,
             'latitude': city_geo[0] if len(city_geo) > 0 else None,
             'longitude': city_geo[1] if len(city_geo) > 1 else None,
             'pollutants': pollutants,
             'forecast': forecast,
+            'timestamp': measurement_time,
             'measurement_time': measurement_time,
             'city_url': city_url,
             'attributions': attributions,
@@ -257,7 +262,9 @@ class AQICNService:
 
         # Temperature
         if 't' in iaqi:
-            weather['temperature'] = iaqi['t'].get('v', 0)
+            temperature = iaqi['t'].get('v', 0)
+            weather['temp'] = temperature
+            weather['temperature'] = temperature
 
         # Humidity
         if 'h' in iaqi:
