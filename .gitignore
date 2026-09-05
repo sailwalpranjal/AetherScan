@@ -1,8 +1,7 @@
 # AetherScan .gitignore
 # ======================
 
-# Claude Code config
-.claude/
+
 
 # Environment files (NEVER commit secrets)
 .env
@@ -34,8 +33,10 @@ wheels/
 .installed.cfg
 *.egg
 venv/
+.venv/
 ENV/
 backend/venv/
+backend/.venv/
 
 # Node.js / Frontend
 node_modules/
