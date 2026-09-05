@@ -181,7 +181,7 @@ async def get_state_wise_pollution() -> Dict:
                                     state_data[state_name]['aqi_direct'] = [int(aqi_val)]
                                     print(f"[OK] AQICN: Got AQI {aqi_val} for {state_name}")
                             await asyncio.sleep(0.1)  # Rate limiting
-                        except Exception as e:
+                        except Exception:
                             continue
 
                 if len(state_data) > 10:
@@ -196,7 +196,7 @@ async def get_state_wise_pollution() -> Dict:
 
         # Check for direct AQI from AQICN
         if 'aqi_direct' in pollutants:
-            aqi_value = int(np.mean(pollutants['aqi_direct']))
+            aqi_value = int(sum(pollutants['aqi_direct']) / len(pollutants['aqi_direct'])) if pollutants['aqi_direct'] else 0
             if aqi_value <= 50:
                 category, color = 'Good', '#00E400'
             elif aqi_value <= 100:
@@ -220,7 +220,7 @@ async def get_state_wise_pollution() -> Dict:
             # Calculate from pollutant values
             for param, values in pollutants.items():
                 if values and param != 'aqi_direct':
-                    avg_pollutants[param] = np.mean(values)
+                    avg_pollutants[param] = sum(values) / len(values) if values else 0.0
 
             if not avg_pollutants:
                 continue

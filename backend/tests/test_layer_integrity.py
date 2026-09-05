@@ -10,7 +10,6 @@ Verifies:
 """
 
 import ast
-import inspect
 from pathlib import Path
 import sys
 import unittest.mock as mock
@@ -160,3 +159,51 @@ class TestStaticASTZeroRandomInvariant:
                 if isinstance(node, ast.Attribute):
                     if isinstance(node.value, ast.Name) and node.value.id == "random":
                         assert False, f"Forbidden 'random.{node.attr}' call found in {filename} at line {node.lineno}"
+
+
+class TestStateHeatmapPositiveIntegration:
+    """Verify that state_heatmap layer correctly aggregates real measurements and direct AQI."""
+
+    @pytest.mark.asyncio
+    async def test_state_heatmap_with_real_measurements(self):
+        sample_measurements = [
+            {'city': 'Delhi', 'parameter': 'pm25', 'value': 45.0},
+            {'city': 'Delhi', 'parameter': 'pm10', 'value': 90.0},
+        ]
+        with mock.patch("layers.state_heatmap.openaq_loader.fetch_latest_measurements", new=mock.AsyncMock(return_value=sample_measurements)):
+            with mock.patch("data_sources.aqicn_service.get_aqicn_service", return_value=None):
+                result = await state_heatmap.get_state_wise_pollution()
+                assert result['count'] > 0
+                assert result['source'] == 'OpenAQ'
+                assert len(result['features']) == result['count']
+
+                delhi_feat = next((f for f in result['features'] if f['properties']['state'] == 'Delhi'), None)
+                assert delhi_feat is not None, "Delhi feature should be present in results"
+                props = delhi_feat['properties']
+                assert props['aqi'] > 0
+                assert 'pollutants' in props
+                assert props['pollutants'].get('pm25') == 45.0
+                assert props['pollutants'].get('pm10') == 90.0
+                assert props['category'] in ('Good', 'Satisfactory', 'Moderate', 'Poor', 'Very Poor', 'Severe', 'Hazardous')
+                assert props['source'] == 'OpenAQ'
+
+    @pytest.mark.asyncio
+    async def test_state_heatmap_with_aqicn_direct_aqi(self):
+        """Test the direct AQI path (line 199) by supplying station data with 'aqi' key."""
+        mock_aqicn = mock.AsyncMock()
+        mock_aqicn.get_aqi_by_city_name = mock.AsyncMock(return_value={'aqi': 85})
+
+        with mock.patch("layers.state_heatmap.openaq_loader.fetch_latest_measurements", new=mock.AsyncMock(return_value=[])):
+            with mock.patch("data_sources.aqicn_service.get_aqicn_service", return_value=mock_aqicn):
+                with mock.patch("asyncio.sleep", new=mock.AsyncMock()):
+                    result = await state_heatmap.get_state_wise_pollution()
+                    assert result['count'] > 0
+                    assert len(result['features']) == result['count']
+
+                    delhi_feat = next((f for f in result['features'] if f['properties']['state'] == 'Delhi'), None)
+                    assert delhi_feat is not None, "Delhi feature should be present in AQICN direct AQI results"
+                    props = delhi_feat['properties']
+                    assert props['aqi'] == 85
+                    assert props['category'] == 'Moderate'
+                    assert props['color'] == '#FFFF00'
+                    assert props['dominant_pollutant'] == 'PM2.5'
