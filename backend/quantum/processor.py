@@ -145,7 +145,7 @@ class QuantumEnvironmentalProcessor:
         qc.measure(range(self.num_qubits), range(self.num_qubits))
 
         phase_values = self._encode_data_to_phases(data_sources[:n_sources])
-        bound_circuit = qc.bind_parameters({
+        bound_circuit = qc.assign_parameters({
             phase_params[i]: phase_values[i] for i in range(len(phase_params))
         })
 
