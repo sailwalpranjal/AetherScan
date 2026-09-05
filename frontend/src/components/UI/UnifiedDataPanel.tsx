@@ -5,6 +5,9 @@ import { X, MapPin, Wind, Droplets, Factory, Flame, AlertTriangle, TrendingUp, T
 import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { aqiAPI } from '@/lib/api'
+import { Button } from '@/components/UI/button'
+import { Badge } from '@/components/UI/badge'
+import { Separator } from '@/components/UI/separator'
 
 interface PollutantData {
   pm25?: number
@@ -25,6 +28,7 @@ interface ForecastDay {
 
 interface WeatherData {
   temp?: number
+  temperature?: number
   humidity?: number
   pressure?: number
   wind_speed?: number
@@ -108,6 +112,38 @@ const getHealthAdvice = (aqi: number): { icon: typeof AlertTriangle; text: strin
   }
 }
 
+function normalizeForecast(forecastData: any): ForecastDay[] {
+  if (Array.isArray(forecastData)) {
+    return forecastData
+  }
+
+  if (!forecastData || typeof forecastData !== 'object') {
+    return []
+  }
+
+  const byDate = new Map<string, ForecastDay>()
+  const pollutantKeys: Array<keyof Pick<ForecastDay, 'pm25' | 'pm10' | 'o3' | 'uvi'>> = ['pm25', 'pm10', 'o3', 'uvi']
+
+  for (const pollutant of pollutantKeys) {
+    const entries = Array.isArray(forecastData[pollutant]) ? forecastData[pollutant] : []
+    for (const entry of entries) {
+      const date = entry?.day || entry?.date
+      if (!date) continue
+
+      const existing: ForecastDay = byDate.get(date) ?? { date }
+      const avg = Number(entry?.avg ?? entry?.value ?? 0)
+      existing[pollutant] = {
+        avg,
+        min: Number(entry?.min ?? avg),
+        max: Number(entry?.max ?? avg),
+      }
+      byDate.set(date, existing)
+    }
+  }
+
+  return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date))
+}
+
 export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
   const [forecast, setForecast] = useState<ForecastDay[]>([])
   const [loadingForecast, setLoadingForecast] = useState(false)
@@ -139,11 +175,10 @@ export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
       setLoadingForecast(true)
       try {
         const result = await aqiAPI.getForecast(data.latitude, data.longitude)
-        if (result?.forecast) {
-          setForecast(result.forecast)
-        }
+        setForecast(normalizeForecast(result?.forecast))
       } catch (error) {
         console.error('Failed to fetch forecast:', error)
+        setForecast([])
       } finally {
         setLoadingForecast(false)
       }
@@ -237,11 +272,11 @@ export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
         ['Category', exportObj.aqi.category],
         ['Dominant Pollutant', exportObj.aqi.dominant_pollutant || ''],
         ...(data.pollutants ? Object.entries(data.pollutants).map(([key, val]) => [key.toUpperCase(), val?.toString() || '']) : []),
-        ...(data.weather ? [
-          ['Temperature (°C)', data.weather.temp?.toString() || ''],
-          ['Humidity (%)', data.weather.humidity?.toString() || ''],
-          ['Pressure (hPa)', data.weather.pressure?.toString() || ''],
-          ['Wind Speed (m/s)', data.weather.wind_speed?.toString() || '']
+        ...(hasWeather ? [
+          ['Temperature (°C)', weatherTemp?.toString() || ''],
+          ['Humidity (%)', data.weather?.humidity?.toString() || ''],
+          ['Pressure (hPa)', data.weather?.pressure?.toString() || ''],
+          ['Wind Speed (m/s)', data.weather?.wind_speed?.toString() || '']
         ] : [])
       ]
       const csv = csvRows.map(row => row.join(',')).join('\n')
@@ -260,6 +295,12 @@ export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
   // Get dynamic health advice based on actual AQI value
   const advice = getHealthAdvice(data.aqi)
   const AdviceIcon = advice.icon
+  const weatherTemp = data.weather?.temp ?? data.weather?.temperature
+  const hasWeather =
+    weatherTemp !== undefined ||
+    data.weather?.humidity !== undefined ||
+    data.weather?.pressure !== undefined ||
+    data.weather?.wind_speed !== undefined
 
   const pollutantData = pollutantConfig
     .filter(p => data.pollutants && data.pollutants[p.key as keyof PollutantData] !== undefined)
@@ -273,23 +314,48 @@ export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{ duration: 0.3 }}
+        initial={{ opacity: 0, y: -20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -20, scale: 0.95 }}
+        transition={{
+          type: 'spring',
+          stiffness: 300,
+          damping: 25,
+        }}
         className="w-full max-w-md"
       >
-        {/* Main Panel - Made Scrollable */}
-        <div className="glass rounded-2xl overflow-hidden shadow-2xl border border-white/10 max-h-[85vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent hover:scrollbar-thumb-white/30">
+        {/* Main Panel - Made Scrollable with Enhanced Effects */}
+        <motion.div
+          className="glass rounded-2xl overflow-hidden shadow-2xl border max-h-[85vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent hover:scrollbar-thumb-white/30"
+          animate={{
+            borderColor: [
+              'rgba(255, 255, 255, 0.1)',
+              'rgba(6, 182, 212, 0.3)',
+              'rgba(255, 255, 255, 0.1)',
+            ],
+            boxShadow: [
+              '0 0 20px rgba(0, 0, 0, 0.5)',
+              '0 0 40px rgba(6, 182, 212, 0.3)',
+              '0 0 20px rgba(0, 0, 0, 0.5)',
+            ],
+          }}
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+        >
           {/* Header with AQI */}
           <div className="relative p-6 bg-gradient-to-br from-slate-900/90 to-slate-800/90">
             {/* Close Button */}
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={onClose}
-              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg glass hover:bg-white/10 transition-all group"
+              className="absolute top-4 right-4 w-8 h-8"
             >
-              <X className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
-            </button>
+              <X className="w-4 h-4" />
+            </Button>
 
             {/* AQI Score */}
             <div className="flex items-start gap-4 mb-4">
@@ -360,7 +426,7 @@ export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
           </div>
 
           {/* Weather Section */}
-          {data.weather && (data.weather.temp || data.weather.humidity || data.weather.pressure) && (
+          {data.weather && hasWeather && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -372,12 +438,12 @@ export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
                 <h4 className="text-sm font-semibold text-white">Weather Conditions</h4>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                {data.weather.temp !== undefined && (
+                {weatherTemp !== undefined && (
                   <div className="flex items-center gap-2">
                     <Thermometer className="w-4 h-4 text-orange-400" />
                     <div>
                       <div className="text-xs text-gray-400">Temperature</div>
-                      <div className="text-sm font-semibold text-white">{Number(data.weather.temp).toFixed(1)}°C</div>
+                      <div className="text-sm font-semibold text-white">{Number(weatherTemp).toFixed(1)}°C</div>
                     </div>
                   </div>
                 )}
@@ -431,7 +497,7 @@ export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
           </motion.div>
 
           {/* 7-Day Forecast */}
-          {forecast.length > 0 && (
+          {(loadingForecast || forecast.length > 0) && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -492,6 +558,9 @@ export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
               </div>
               {loadingForecast && (
                 <div className="text-center text-xs text-gray-400 mt-2">Loading forecast...</div>
+              )}
+              {!loadingForecast && forecast.length === 0 && (
+                <div className="text-center text-xs text-gray-400 mt-2">Forecast unavailable for this location.</div>
               )}
             </motion.div>
           )}
@@ -621,7 +690,7 @@ export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </motion.div>
     </AnimatePresence>
   )

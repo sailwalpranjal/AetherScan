@@ -59,6 +59,23 @@ export default function LocationComparison({ isOpen, onClose, initialLocation }:
   }, [isOpen])
 
   useEffect(() => {
+    if (!isOpen || locations.length > 0) return
+
+    const saved = localStorage.getItem('aqi-comparison-locations')
+    if (!saved) return
+
+    try {
+      const parsed = JSON.parse(saved) as Array<{ name: string; latitude: number; longitude: number }>
+      parsed.slice(0, 6).forEach((location) => {
+        addLocation(location.name, location.latitude, location.longitude)
+      })
+    } catch (error) {
+      console.error('Failed to restore comparison locations:', error)
+      localStorage.removeItem('aqi-comparison-locations')
+    }
+  }, [isOpen, locations.length])
+
+  useEffect(() => {
     if (locations.length > 0) {
       const toSave = locations.map(loc => ({
         name: loc.name,
@@ -88,7 +105,7 @@ export default function LocationComparison({ isOpen, onClose, initialLocation }:
     }
 
     // Generate truly unique ID using timestamp + random
-    const id = `${lat}-${lon}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const id = `${lat}-${lon}-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
     const newLocation: LocationData = {
       id,
       name,

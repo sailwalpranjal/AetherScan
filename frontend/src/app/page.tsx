@@ -7,6 +7,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Layers, X, Search as SearchIcon, BookmarkIcon, BarChart3, Keyboard } from 'lucide-react'
 import PageLoader from '@/components/UI/PageLoader'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { Button } from '@/components/UI/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/UI/card'
+import { Badge } from '@/components/UI/badge'
+import CustomCursor from '@/components/UI/CustomCursor'
+import FloatingParticles from '@/components/UI/FloatingParticles'
+import { buildApiUrl } from '@/lib/api'
 
 // Dynamic imports for better performance
 const BaseMap = dynamic(() => import('@/components/Map/BaseMap'), { ssr: false })
@@ -46,6 +52,19 @@ interface AQIData {
     o3?: number
   }
 }
+
+// Keyboard shortcut item component
+const ShortcutItem = ({ label, keys }: { label: string; keys: string }) => (
+  <motion.div
+    whileHover={{ scale: 1.02, x: 4 }}
+    className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-all border border-transparent hover:border-cyan-500/20 group"
+  >
+    <span className="text-sm text-white group-hover:text-cyan-400 transition-colors">{label}</span>
+    <Badge variant="outline" className="font-mono text-xs px-2.5 py-1 shadow-sm group-hover:shadow-cyan-500/20">
+      {keys}
+    </Badge>
+  </motion.div>
+)
 
 export default function Home() {
   // Loading state
@@ -181,10 +200,9 @@ export default function Home() {
 
     // Fetch AQI for location
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
       const [aqiResponse, geoResponse] = await Promise.all([
-        fetch(`${API_URL}/aqi/calculate?lat=${lat}&lon=${lon}`),
-        fetch(`${API_URL}/search/reverse?lat=${lat}&lon=${lon}`)
+        fetch(buildApiUrl(`/aqi/calculate?lat=${lat}&lon=${lon}`)),
+        fetch(buildApiUrl(`/search/reverse?lat=${lat}&lon=${lon}`))
       ])
 
       const aqiData = aqiResponse.ok ? await aqiResponse.json() : null
@@ -210,10 +228,9 @@ export default function Home() {
     // Don't override if clicked on industry - BaseMap handles that
     // This is for regular map clicks
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
       const [aqiResponse, geoResponse] = await Promise.all([
-        fetch(`${API_URL}/aqi/calculate?lat=${lat}&lon=${lon}`),
-        fetch(`${API_URL}/search/reverse?lat=${lat}&lon=${lon}`)
+        fetch(buildApiUrl(`/aqi/calculate?lat=${lat}&lon=${lon}`)),
+        fetch(buildApiUrl(`/search/reverse?lat=${lat}&lon=${lon}`))
       ])
 
       const aqiData = aqiResponse.ok ? await aqiResponse.json() : null
@@ -238,24 +255,59 @@ export default function Home() {
   return (
     <>
       <PageLoader isLoading={isPageLoading} />
+      <CustomCursor />
+      <FloatingParticles count={40} />
       <main className="relative w-full h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
-      {/* Animated Background */}
+      {/* Enhanced Animated Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Morphing gradient orbs */}
         <motion.div
-          className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"
+          className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(6, 182, 212, 0.15) 0%, transparent 70%)',
+          }}
           animate={{
             y: [0, 100, 0],
-            scale: [1, 1.2, 1],
-          }}
-          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"
-          animate={{
-            y: [0, -100, 0],
+            x: [0, 50, 0],
             scale: [1, 1.3, 1],
           }}
-          transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-3xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%)',
+          }}
+          animate={{
+            y: [0, -100, 0],
+            x: [0, -50, 0],
+            scale: [1, 1.4, 1],
+          }}
+          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(157, 78, 221, 0.1) 0%, transparent 70%)',
+          }}
+          animate={{
+            scale: [1, 1.5, 1],
+            rotate: [0, 180, 360],
+          }}
+          transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
+        />
+
+        {/* Scanline effect */}
+        <motion.div
+          className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent"
+          animate={{
+            y: ['0%', '100%'],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: 'linear',
+          }}
         />
       </div>
 
@@ -281,35 +333,41 @@ export default function Home() {
       <div className="absolute top-20 sm:top-24 left-2 sm:left-4 z-40 w-[calc(100%-1rem)] sm:w-auto sm:max-w-md">
         {/* Toggle Buttons Row - Mobile */}
         <div className="flex flex-wrap gap-2 mb-2 sm:hidden">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setSearchPanelOpen(!searchPanelOpen)}
-            className={`px-3 py-2 rounded-lg glass hover:bg-white/10 transition-all flex items-center gap-2 border ${searchPanelOpen ? 'border-cyan-500/50 bg-cyan-500/10' : 'border-white/10'}`}
-          >
-            <SearchIcon className="w-4 h-4 text-cyan-400" />
-            <span className="text-xs font-medium text-white">Search</span>
-          </motion.button>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              variant={searchPanelOpen ? "default" : "neon"}
+              size="sm"
+              onClick={() => setSearchPanelOpen(!searchPanelOpen)}
+              className="gap-2"
+            >
+              <SearchIcon className="w-4 h-4" />
+              <span className="text-xs font-medium">Search</span>
+            </Button>
+          </motion.div>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setBookmarksOpen(!bookmarksOpen)}
-            className={`px-3 py-2 rounded-lg glass hover:bg-white/10 transition-all flex items-center gap-2 border ${bookmarksOpen ? 'border-purple-500/50 bg-purple-500/10' : 'border-white/10'}`}
-          >
-            <BookmarkIcon className="w-4 h-4 text-purple-400" />
-            <span className="text-xs font-medium text-white">Saved</span>
-          </motion.button>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              variant={bookmarksOpen ? "secondary" : "neon"}
+              size="sm"
+              onClick={() => setBookmarksOpen(!bookmarksOpen)}
+              className="gap-2"
+            >
+              <BookmarkIcon className="w-4 h-4" />
+              <span className="text-xs font-medium">Saved</span>
+            </Button>
+          </motion.div>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setComparisonOpen(true)}
-            className="px-3 py-2 rounded-lg glass hover:bg-white/10 transition-all flex items-center gap-2 border border-white/10"
-          >
-            <BarChart3 className="w-4 h-4 text-green-400" />
-            <span className="text-xs font-medium text-white">Compare</span>
-          </motion.button>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              variant="neon"
+              size="sm"
+              onClick={() => setComparisonOpen(true)}
+              className="gap-2"
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span className="text-xs font-medium">Compare</span>
+            </Button>
+          </motion.div>
         </div>
 
         {/* Search Panel - Collapsible */}
@@ -469,12 +527,14 @@ export default function Home() {
                   <Layers className="w-5 h-5 text-cyan-400" />
                   <h2 className="text-lg font-bold text-white">Layer Manager</h2>
                 </div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-8 h-8 rounded-lg glass hover:bg-white/10 transition-all flex items-center justify-center"
+                  className="w-8 h-8"
                 >
-                  <X className="w-5 h-5 text-white" />
-                </button>
+                  <X className="w-5 h-5" />
+                </Button>
               </div>
 
               {/* Mobile Layer Content */}
@@ -510,22 +570,24 @@ export default function Home() {
           </AnimatePresence>
 
           {/* Toggle Button - always at bottom */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setLegendOpen(!legendOpen)}
-            className="glass px-3 py-2 rounded-lg flex items-center gap-2 border border-white/10 text-xs font-semibold text-white"
-          >
-            <span>Legend</span>
-            <motion.div
-              animate={{ rotate: legendOpen ? 180 : 0 }}
-              transition={{ duration: 0.3 }}
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              variant="neon"
+              size="sm"
+              onClick={() => setLegendOpen(!legendOpen)}
+              className="gap-2"
             >
-              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </motion.div>
-          </motion.button>
+              <span>Legend</span>
+              <motion.div
+                animate={{ rotate: legendOpen ? 180 : 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </motion.div>
+            </Button>
+          </motion.div>
         </div>
       </div>
 
@@ -533,25 +595,31 @@ export default function Home() {
       <div className="absolute bottom-2 sm:bottom-4 left-1/2 transform -translate-x-1/2 z-30 w-full max-w-3xl px-2 sm:px-4">
         <div className="relative">
           {/* Toggle Button */}
-          <motion.button
+          <motion.div
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => setTimeSliderOpen(!timeSliderOpen)}
-            className="glass px-3 py-2 rounded-lg mb-2 mx-auto flex items-center gap-2 border border-white/10 text-xs font-semibold text-white"
+            className="mb-2 mx-auto flex"
           >
-            <svg className="w-3 h-3 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>Time Range</span>
-            <motion.div
-              animate={{ rotate: timeSliderOpen ? 180 : 0 }}
-              transition={{ duration: 0.3 }}
+            <Button
+              variant="neon"
+              size="sm"
+              onClick={() => setTimeSliderOpen(!timeSliderOpen)}
+              className="gap-2"
             >
-              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-            </motion.div>
-          </motion.button>
+              <span>Time Range</span>
+              <motion.div
+                animate={{ rotate: timeSliderOpen ? 180 : 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </motion.div>
+            </Button>
+          </motion.div>
 
           <AnimatePresence>
             {timeSliderOpen && (
@@ -572,15 +640,21 @@ export default function Home() {
       </div>
 
       {/* Keyboard Shortcuts Help - Bottom Right */}
-      <motion.button
+      <motion.div
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        onClick={() => setShowKeyboardHelp(true)}
-        className="fixed bottom-4 right-4 z-30 w-10 h-10 rounded-full glass border border-white/10 hover:bg-white/10 flex items-center justify-center group"
-        title="Keyboard Shortcuts (Shift + ?)"
+        className="fixed bottom-4 right-4 z-30"
       >
-        <Keyboard className="w-5 h-5 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
-      </motion.button>
+        <Button
+          variant="neon"
+          size="icon"
+          onClick={() => setShowKeyboardHelp(true)}
+          className="w-10 h-10 rounded-full shadow-lg shadow-cyan-500/20"
+          title="Keyboard Shortcuts (Shift + ?)"
+        >
+          <Keyboard className="w-5 h-5" />
+        </Button>
+      </motion.div>
 
       {/* Keyboard Shortcuts Modal */}
       <AnimatePresence>
@@ -589,73 +663,54 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
             onClick={() => setShowKeyboardHelp(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={e => e.stopPropagation()}
-              className="w-full max-w-md glass rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
+              className="w-full max-w-md"
             >
-              <div className="p-6 border-b border-white/10 bg-gradient-to-r from-slate-900/90 to-slate-800/90">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-                      <Keyboard className="w-5 h-5 text-white" />
+              <Card className="overflow-hidden border-cyan-500/30 shadow-[0_0_50px_rgba(0,255,255,0.25)]">
+                <CardHeader className="bg-gradient-to-r from-slate-900/95 to-slate-800/95 border-b border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                        <Keyboard className="w-5 h-5 text-white" />
+                      </div>
+                      <CardTitle className="text-xl">Keyboard Shortcuts</CardTitle>
                     </div>
-                    <h2 className="text-xl font-bold text-white">Keyboard Shortcuts</h2>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowKeyboardHelp(false)}
+                      className="w-8 h-8"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <button
-                    onClick={() => setShowKeyboardHelp(false)}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg glass hover:bg-white/10 transition-all"
-                  >
-                    <X className="w-4 h-4 text-gray-400" />
-                  </button>
-                </div>
-              </div>
+                </CardHeader>
 
-              <div className="p-6 space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                  <span className="text-sm text-white">Toggle Search</span>
-                  <kbd className="px-2 py-1 rounded bg-white/10 border border-white/20 text-xs font-mono text-cyan-400">Ctrl + S</kbd>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                  <span className="text-sm text-white">Toggle Layers</span>
-                  <kbd className="px-2 py-1 rounded bg-white/10 border border-white/20 text-xs font-mono text-cyan-400">Ctrl + L</kbd>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                  <span className="text-sm text-white">Toggle Legend</span>
-                  <kbd className="px-2 py-1 rounded bg-white/10 border border-white/20 text-xs font-mono text-cyan-400">Ctrl + E</kbd>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                  <span className="text-sm text-white">Toggle Bookmarks</span>
-                  <kbd className="px-2 py-1 rounded bg-white/10 border border-white/20 text-xs font-mono text-cyan-400">Ctrl + B</kbd>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                  <span className="text-sm text-white">Open Comparison</span>
-                  <kbd className="px-2 py-1 rounded bg-white/10 border border-white/20 text-xs font-mono text-cyan-400">Ctrl + K</kbd>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                  <span className="text-sm text-white">Toggle Time Slider</span>
-                  <kbd className="px-2 py-1 rounded bg-white/10 border border-white/20 text-xs font-mono text-cyan-400">Ctrl + T</kbd>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                  <span className="text-sm text-white">Close Panels</span>
-                  <kbd className="px-2 py-1 rounded bg-white/10 border border-white/20 text-xs font-mono text-cyan-400">Esc</kbd>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                  <span className="text-sm text-white">Show This Help</span>
-                  <kbd className="px-2 py-1 rounded bg-white/10 border border-white/20 text-xs font-mono text-cyan-400">Shift + ?</kbd>
-                </div>
-              </div>
+                <CardContent className="p-6 space-y-2">
+                  <ShortcutItem label="Toggle Search" keys="Ctrl + S" />
+                  <ShortcutItem label="Toggle Layers" keys="Ctrl + L" />
+                  <ShortcutItem label="Toggle Legend" keys="Ctrl + E" />
+                  <ShortcutItem label="Toggle Bookmarks" keys="Ctrl + B" />
+                  <ShortcutItem label="Open Comparison" keys="Ctrl + K" />
+                  <ShortcutItem label="Toggle Time Slider" keys="Ctrl + T" />
+                  <ShortcutItem label="Close Panels" keys="Esc" />
+                  <ShortcutItem label="Show This Help" keys="Shift + ?" />
+                </CardContent>
 
-              <div className="p-4 border-t border-white/10 bg-white/5">
-                <p className="text-xs text-center text-gray-400">
-                  Press <kbd className="px-1 py-0.5 rounded bg-white/10 text-cyan-400">Esc</kbd> to close
-                </p>
-              </div>
+                <div className="p-4 border-t border-white/10 bg-gradient-to-r from-white/5 to-transparent">
+                  <p className="text-xs text-center text-gray-400 flex items-center justify-center gap-2">
+                    Press <Badge variant="neon" className="text-xs px-2 py-0.5">Esc</Badge> to close
+                  </p>
+                </div>
+              </Card>
             </motion.div>
           </motion.div>
         )}

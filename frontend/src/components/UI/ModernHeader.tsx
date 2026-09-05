@@ -4,6 +4,7 @@
 import { Menu, Layers } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AetherScanLogo from './AetherScanLogo'
+import { Button } from '@/components/UI/button'
 
 interface ModernHeaderProps {
   activeLayersCount: number
@@ -75,12 +76,14 @@ export default function ModernHeader({ activeLayersCount, onMenuClick }: ModernH
             </div>
 
             {/* Mobile Menu Button */}
-            <button
+            <Button
+              variant="neon"
+              size="icon"
               onClick={onMenuClick}
-              className="lg:hidden w-9 h-9 sm:w-10 sm:h-10 rounded-lg glass-hover flex items-center justify-center border border-white/10 hover:border-cyan-500/50 transition-all"
+              className="lg:hidden w-9 h-9 sm:w-10 sm:h-10"
             >
-              <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-            </button>
+              <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
+            </Button>
           </motion.div>
         </div>
       </div>

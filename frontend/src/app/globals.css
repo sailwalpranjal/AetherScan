@@ -5,10 +5,35 @@
 /* Import Futuristic Theme */
 @import '../styles/theme.css';
 
-:root {
-  --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 10, 14, 26;
-  --background-end-rgb: 0, 0, 0;
+@layer base {
+  :root {
+    /* Original theme variables */
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 10, 14, 26;
+    --background-end-rgb: 0, 0, 0;
+
+    /* shadcn/ui variables - Dark theme with neon accents */
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 180 100% 50%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 91% 60%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 180 100% 50%;
+    --radius: 0.75rem;
+  }
 }
 
 * {
@@ -63,10 +88,10 @@ a {
 /* Loading animation */
 @keyframes shimmer {
   0% {
-    background-position: -1000px 0;
+    transform: translateX(-100%);
   }
   100% {
-    background-position: 1000px 0;
+    transform: translateX(100%);
   }
 }
 

@@ -28,6 +28,7 @@ import SatelliteNO2 from '../Layers/SatelliteNO2'
 import SatelliteSO2 from '../Layers/SatelliteSO2'
 import SatelliteAOD from '../Layers/SatelliteAOD'
 import LandTemperature from '../Layers/LandTemperature'
+import WMSOverlay from '../Layers/WMSOverlay'
 
 interface BaseMapProps {
   activeLayers: string[]
@@ -352,7 +353,10 @@ export default function BaseMap({
         // Also fetch AQI for the industry location
         setLoading(true)
         try {
-          const result = await aqiAPI.calculateAtPoint(lat, lon)
+          const result = await aqiAPI.calculateAtPoint(
+            (typeof featureLat === 'number' && !isNaN(featureLat)) ? featureLat : lat,
+            (typeof featureLon === 'number' && !isNaN(featureLon)) ? featureLon : lon
+          )
           setAqiData(result)
         } catch (error) {
           console.error('Error calculating AQI for industry:', error)
@@ -564,10 +568,18 @@ export default function BaseMap({
 
         {/* Population Density uses same component as Population Points */}
         {activeLayers.includes('population-density') && layerData['population-density'] && (
-          <PopulationPoints
-            data={layerData['population-density']}
-            opacity={layerOpacity['population-density'] ?? 0.6}
-          />
+          layerData['population-density'].type === 'wms' ? (
+            <WMSOverlay
+              id="population-density"
+              data={layerData['population-density']}
+              opacity={layerOpacity['population-density'] ?? 0.6}
+            />
+          ) : (
+            <PopulationPoints
+              data={layerData['population-density']}
+              opacity={layerOpacity['population-density'] ?? 0.6}
+            />
+          )
         )}
 
         {activeLayers.includes('fire-density') && layerData['fire-density'] && (
@@ -579,24 +591,48 @@ export default function BaseMap({
 
         {/* Satellite Layers */}
         {activeLayers.includes('satellite-no2') && layerData['satellite-no2'] && (
-          <SatelliteNO2
-            data={layerData['satellite-no2']}
-            opacity={layerOpacity['satellite-no2'] ?? 0.7}
-          />
+          layerData['satellite-no2'].type === 'wms' ? (
+            <WMSOverlay
+              id="satellite-no2"
+              data={layerData['satellite-no2']}
+              opacity={layerOpacity['satellite-no2'] ?? 0.7}
+            />
+          ) : (
+            <SatelliteNO2
+              data={layerData['satellite-no2']}
+              opacity={layerOpacity['satellite-no2'] ?? 0.7}
+            />
+          )
         )}
 
         {activeLayers.includes('satellite-so2') && layerData['satellite-so2'] && (
-          <SatelliteSO2
-            data={layerData['satellite-so2']}
-            opacity={layerOpacity['satellite-so2'] ?? 0.7}
-          />
+          layerData['satellite-so2'].type === 'wms' ? (
+            <WMSOverlay
+              id="satellite-so2"
+              data={layerData['satellite-so2']}
+              opacity={layerOpacity['satellite-so2'] ?? 0.7}
+            />
+          ) : (
+            <SatelliteSO2
+              data={layerData['satellite-so2']}
+              opacity={layerOpacity['satellite-so2'] ?? 0.7}
+            />
+          )
         )}
 
         {activeLayers.includes('satellite-aod') && layerData['satellite-aod'] && (
-          <SatelliteAOD
-            data={layerData['satellite-aod']}
-            opacity={layerOpacity['satellite-aod'] ?? 0.7}
-          />
+          layerData['satellite-aod'].type === 'wms' ? (
+            <WMSOverlay
+              id="satellite-aod"
+              data={layerData['satellite-aod']}
+              opacity={layerOpacity['satellite-aod'] ?? 0.7}
+            />
+          ) : (
+            <SatelliteAOD
+              data={layerData['satellite-aod']}
+              opacity={layerOpacity['satellite-aod'] ?? 0.7}
+            />
+          )
         )}
 
         {activeLayers.includes('land-temperature') && layerData['land-temperature'] && (

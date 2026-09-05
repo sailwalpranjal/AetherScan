@@ -1,7 +1,11 @@
 import axios from 'axios'
 import type { AQIResult, HeatmapData, GeoJSONLayer, WMSLayer, TimeSeriesData } from './types'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/$/, '')
+
+export function buildApiUrl(path: string): string {
+  return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`
+}
 
 const api = axios.create({
   baseURL: API_BASE_URL,
