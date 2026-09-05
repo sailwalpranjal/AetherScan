@@ -1,14 +1,3 @@
-"""
-Quantum State Management System
-================================
-
-Manages quantum-inspired computational states with coherence time tracking,
-entanglement relationships, and state lifecycle management.
-
-Author: Pranjal Sailwal
-Development: 2 weeks of implementation after studying quantum state mechanics
-"""
-
 import asyncio
 from typing import Dict, List, Optional, Set
 from dataclasses import dataclass, field
