@@ -123,18 +123,21 @@ class NASAFIRMSProvider(BaseProvider):
         base_url: Optional[str] = None,
         rate_limiter: Optional[RateLimiter] = None,
         client: Optional[httpx.AsyncClient] = None,
+        map_key: Optional[str] = None,
     ):
         super().__init__()
         resolved_url = base_url or getattr(
             settings, "NASA_FIRMS_URL", "https://firms.modaps.eosdis.nasa.gov/api"
         )
         self.base_url = resolved_url.rstrip("/")
+        resolved_key = api_key if api_key is not None else map_key
         self.api_key = (
-            api_key
-            if api_key is not None
+            resolved_key
+            if resolved_key is not None
             else getattr(settings, "NASA_FIRMS_API_KEY", "")
             or os.environ.get("NASA_FIRMS_API_KEY", "")
         ).strip()
+        self.map_key = self.api_key
         self.rate_limiter = rate_limiter or RateLimiter(max_calls=60, period_seconds=60.0)
         self._client = client
 

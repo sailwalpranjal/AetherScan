@@ -477,7 +477,10 @@ class OpenAQProvider(BaseProvider):
             )
 
             # Metadata extraction if station not already captured
-            loc_meta = m.get("location_meta") or m.get("location") or {}
+            loc_meta_raw = m.get("location_meta") or m.get("location")
+            loc_meta = loc_meta_raw if isinstance(loc_meta_raw, dict) else {}
+            loc_str = loc_meta_raw if isinstance(loc_meta_raw, str) else ""
+
             coords = m.get("coordinates") or loc_meta.get("coordinates") or {}
             m_lat = coords.get("latitude") if isinstance(coords, dict) else m.get("latitude")
             m_lon = coords.get("longitude") if isinstance(coords, dict) else m.get("longitude")
@@ -486,7 +489,7 @@ class OpenAQProvider(BaseProvider):
                 seen_station_ids.add(station_id)
                 processed_stations.append({
                     "station_id": station_id,
-                    "name": loc_meta.get("name") or m.get("location_name") or f"Station {station_id}",
+                    "name": loc_meta.get("name") or m.get("location_name") or loc_str or f"Station {station_id}",
                     "latitude": float(m_lat),
                     "longitude": float(m_lon),
                     "city": loc_meta.get("locality") or m.get("city"),
@@ -504,7 +507,7 @@ class OpenAQProvider(BaseProvider):
                 "latitude": float(m_lat) if m_lat is not None else None,
                 "longitude": float(m_lon) if m_lon is not None else None,
                 "city": loc_meta.get("locality") or m.get("city") or "",
-                "location": loc_meta.get("name") or m.get("location") or f"Station {station_id}",
+                "location": loc_meta.get("name") or loc_str or m.get("location_name") or f"Station {station_id}",
                 "country": "IN",
                 "dqs": dqs,
             }

@@ -1,6 +1,9 @@
 from sqlalchemy import Column, String, Float, Integer, ForeignKey, Index
 from sqlalchemy.orm import relationship
-from db.database import Base
+try:
+    from db.database import Base
+except ImportError:
+    from backend.db.database import Base
 
 class OpenAQStation(Base):
     __tablename__ = "openaq_stations"
@@ -25,12 +28,14 @@ class OpenAQMeasurement(Base):
     value = Column(Float)
     unit = Column(String)
     timestamp = Column(String)
+    dqs = Column(Float, nullable=True)
 
     station = relationship("OpenAQStation", back_populates="measurements")
 
     __table_args__ = (
         Index('idx_measurements_station', 'station_id'),
         Index('idx_measurements_timestamp', 'timestamp'),
+        Index('idx_measurements_dedup', 'station_id', 'parameter', 'timestamp'),
     )
 
 class NASAFirmsFire(Base):
@@ -47,9 +52,11 @@ class NASAFirmsFire(Base):
     satellite = Column(String)
     confidence = Column(String)
     frp = Column(Float)
+    dqs = Column(Float, nullable=True)
 
     __table_args__ = (
         Index('idx_fires_date', 'acq_date'),
+        Index('idx_fires_dedup', 'latitude', 'longitude', 'acq_date', 'acq_time', 'satellite'),
     )
 
 class Industry(Base):
@@ -81,3 +88,12 @@ class CacheMetadata(Base):
     timestamp = Column(String)
     data_type = Column(String)
     expiry = Column(String)
+
+__all__ = [
+    "OpenAQStation",
+    "OpenAQMeasurement",
+    "NASAFirmsFire",
+    "Industry",
+    "PopulationData",
+    "CacheMetadata",
+]
