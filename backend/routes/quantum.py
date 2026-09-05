@@ -9,19 +9,15 @@ Author: Pranjal Sailwal
 Development: 2 weeks implementing quantum API integration
 """
 
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import Dict, List, Any, Optional
 from pydantic import BaseModel, Field
 import logging
 from datetime import datetime
 
 from quantum import QuantumProcessor, QuantumStateManager
-from quantum.algorithms import (
-    superposition_processor,
-    entanglement_correlator,
-    interference_optimizer
-)
-from middleware import get_database_guard, DatabaseAccessViolation
+from quantum.algorithms import entanglement_correlator, interference_optimizer
+from middleware import get_database_guard
 
 logger = logging.getLogger(__name__)
 
@@ -32,19 +28,28 @@ _quantum_processor: Optional[QuantumProcessor] = None # type: ignore
 _state_manager: Optional[QuantumStateManager] = None # type: ignore
 
 
-def get_quantum_processor() -> QuantumProcessor:
+async def get_quantum_processor(request: Request) -> QuantumProcessor:
     """Dependency to get quantum processor instance."""
+    app_processor = getattr(request.app.state, "quantum_processor", None)
+    if app_processor is not None:
+        return app_processor
+
     global _quantum_processor
     if _quantum_processor is None:
         _quantum_processor = QuantumProcessor()
     return _quantum_processor
 
 
-def get_state_manager() -> QuantumStateManager:
+async def get_state_manager(request: Request) -> QuantumStateManager:
     """Dependency to get state manager instance."""
+    app_state_manager = getattr(request.app.state, "quantum_state_manager", None)
+    if app_state_manager is not None:
+        return app_state_manager
+
     global _state_manager
     if _state_manager is None:
         _state_manager = QuantumStateManager()
+        await _state_manager.start()
     return _state_manager
 
 
@@ -130,6 +135,20 @@ class QuantumMetricsResponse(BaseModel):
     state_manager_stats: Dict[str, Any]
     database_guard_stats: Dict[str, Any]
     timestamp: str
+
+
+class QuantumStateCreateRequest(BaseModel):
+    """Request payload for creating a managed quantum state."""
+    state_id: str = Field(..., min_length=1)
+    data: Dict[str, Any] = Field(default_factory=dict)
+    dimension: int = Field(default=10, ge=2, le=1024)
+    coherence_time: float = Field(default=300.0, gt=0.0)
+
+
+class QuantumStateEntangleRequest(BaseModel):
+    """Request payload for entangling two quantum states."""
+    state_id_1: str = Field(..., min_length=1)
+    state_id_2: str = Field(..., min_length=1)
 
 
 # API Endpoints
@@ -319,10 +338,7 @@ async def get_quantum_metrics(
 
 @router.post("/state/create")
 async def create_quantum_state(
-    state_id: str,
-    data: Dict[str, Any],
-    dimension: int = 10,
-    coherence_time: float = 300.0,
+    request: QuantumStateCreateRequest,
     state_manager: QuantumStateManager = Depends(get_state_manager)
 ):
     """
@@ -333,10 +349,10 @@ async def create_quantum_state(
     """
     try:
         state = state_manager.create_state(
-            state_id=state_id,
-            data=data,
-            dimension=dimension,
-            coherence_time=coherence_time
+            state_id=request.state_id,
+            data=request.data,
+            dimension=request.dimension,
+            coherence_time=request.coherence_time
         )
 
         return {
@@ -389,8 +405,7 @@ async def get_quantum_state(
 
 @router.post("/state/entangle")
 async def entangle_states(
-    state_id_1: str,
-    state_id_2: str,
+    request: QuantumStateEntangleRequest,
     state_manager: QuantumStateManager = Depends(get_state_manager)
 ):
     """
@@ -399,11 +414,11 @@ async def entangle_states(
     Entangled states are correlated and tracked together.
     """
     try:
-        state_manager.entangle_states(state_id_1, state_id_2)
+        state_manager.entangle_states(request.state_id_1, request.state_id_2)
 
         return {
-            "message": f"States '{state_id_1}' and '{state_id_2}' are now entangled",
-            "entangled_pair": [state_id_1, state_id_2]
+            "message": f"States '{request.state_id_1}' and '{request.state_id_2}' are now entangled",
+            "entangled_pair": [request.state_id_1, request.state_id_2]
         }
 
     except Exception as e:
@@ -435,15 +450,16 @@ async def delete_quantum_state(
 
 
 @router.get("/health")
-async def quantum_health_check():
+async def quantum_health_check(
+    processor: QuantumProcessor = Depends(get_quantum_processor),
+    state_manager: QuantumStateManager = Depends(get_state_manager)
+):
     """
     Health check endpoint for quantum processing system.
 
     Returns status of all quantum components.
     """
     try:
-        processor = get_quantum_processor()
-        state_manager = get_state_manager()
         db_guard = get_database_guard()
 
         return {

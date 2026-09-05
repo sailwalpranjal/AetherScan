@@ -7,6 +7,7 @@ from data_sources.openaq_loader import openaq_loader
 from core.aqi_calculator import aqi_calculator
 from core.idw_interpolation import IDWInterpolator
 import numpy as np
+from datetime import datetime
 
 async def calculate_aqi_at_point(lat: float, lon: float) -> Dict:
     """
@@ -123,6 +124,7 @@ async def calculate_aqi_at_point(lat: float, lon: float) -> Dict:
         'dominant_pollutant': aqi_result['dominant_pollutant'],
         'pollutants': interpolated_values,
         'breakdowns': aqi_result['breakdowns'],
+        'timestamp': datetime.utcnow().isoformat(),
         'nearest_sensor_distance': round(min_distance, 1)
     }
 

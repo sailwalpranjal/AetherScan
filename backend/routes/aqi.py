@@ -1,9 +1,8 @@
 """AQI calculation routes - AQICN Primary, OpenAQ Fallback"""
 from fastapi import APIRouter, HTTPException, Query, Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from layers.dynamic_aqi import calculate_aqi_at_point
 from core.aqi_calculator import aqi_calculator
-from models.schemas import AQIResult
 from data_sources.aqicn_service import get_aqicn_service
 
 router = APIRouter(prefix="/aqi", tags=["aqi"])
@@ -112,7 +111,8 @@ async def get_forecast(
 
 @router.get("/stations/search")
 async def search_stations(
-    keyword: str = Query(..., min_length=2, description="Search keyword"),
+    keyword: Optional[str] = Query(None, min_length=2, description="Search keyword"),
+    query: Optional[str] = Query(None, min_length=2, description="Alias for keyword"),
     limit: int = Query(10, ge=1, le=50, description="Max results")
 ) -> Dict:
     """
@@ -126,6 +126,10 @@ async def search_stations(
         List of matching stations
     """
     aqicn = get_aqicn_service()
+    search_term = (keyword or query or "").strip()
+
+    if len(search_term) < 2:
+        raise HTTPException(status_code=422, detail="Search keyword must be at least 2 characters long")
 
     if not aqicn:
         raise HTTPException(
@@ -134,9 +138,9 @@ async def search_stations(
         )
 
     try:
-        stations = await aqicn.search_stations(keyword)
+        stations = await aqicn.search_stations(search_term)
         return {
-            'query': keyword,
+            'query': search_term,
             'count': len(stations[:limit]),
             'stations': stations[:limit]
         }

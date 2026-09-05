@@ -18,6 +18,7 @@ from middleware import get_database_guard
 quantum_processor = None
 quantum_state_manager = None
 quantum_enabled = False
+APP_VERSION = "1.0.1"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -61,6 +62,8 @@ async def lifespan(app: FastAPI):
         quantum_state_manager = QuantumStateManager()
         await quantum_state_manager.start()
         quantum_enabled = True
+        app.state.quantum_processor = quantum_processor
+        app.state.quantum_state_manager = quantum_state_manager
         print("[OK] Quantum processor initialized (classical simulation)")
         print(f"  - Max workers: {quantum_processor.max_workers}")
         print(f"  - State cleanup interval: {quantum_state_manager.cleanup_interval}s")
@@ -102,7 +105,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AetherScan API",
     description="High-performance pollution and AQI mapping system for India",
-    version="1.0.1",
+    version=APP_VERSION,
     lifespan=lifespan
 )
 
@@ -142,7 +145,7 @@ async def root():
 
     return {
         "name": "AetherScan API",
-        "version": "1.0.0",
+        "version": APP_VERSION,
         "description": "High-performance pollution and AQI mapping system for India",
         "endpoints": endpoints,
         "features": features
@@ -176,7 +179,7 @@ async def health_check():
 async def api_info():
     """API information and available layers"""
     return {
-        "api_version": "1.0.0",
+        "api_version": APP_VERSION,
         "data_sources": {
             "aqicn": {
                 "description": "World Air Quality Index - Global AQI data (PRIMARY)",

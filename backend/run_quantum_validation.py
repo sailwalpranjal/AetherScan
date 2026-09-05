@@ -10,6 +10,12 @@ import sys
 from datetime import datetime
 from quantum.processor import QuantumEnvironmentalProcessor
 
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 BANNER = """
 ╔══════════════════════════════════════════════════════════════════╗
 ║                  AetherScan Quantum Processor                    ║
