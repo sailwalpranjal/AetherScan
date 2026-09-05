@@ -4,6 +4,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, MapPin, X, Loader2, Navigation, Factory, Zap, Flame } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Button } from '@/components/UI/button'
+import { Badge } from '@/components/UI/badge'
+import { buildApiUrl } from '@/lib/api'
 
 interface SearchResult {
   name: string
@@ -55,8 +58,8 @@ export default function ModernSearch({ onLocationSelect }: ModernSearchProps) {
       try {
         // Call both location and industry search endpoints in parallel
         const [locationResponse, industryResponse] = await Promise.all([
-          fetch(`http://localhost:8000/search/location?query=${encodeURIComponent(query)}&limit=5`),
-          fetch(`http://localhost:8000/search/industries?query=${encodeURIComponent(query)}&limit=5`)
+          fetch(buildApiUrl(`/search/location?query=${encodeURIComponent(query)}&limit=5`)),
+          fetch(buildApiUrl(`/search/industries?query=${encodeURIComponent(query)}&limit=5`))
         ])
 
         if (!locationResponse.ok && !industryResponse.ok) {
@@ -138,15 +141,21 @@ export default function ModernSearch({ onLocationSelect }: ModernSearchProps) {
           />
 
           {query && !loading && (
-            <motion.button
+            <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
-              onClick={clearSearch}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 transition-colors group"
+              className="absolute right-4 top-1/2 transform -translate-y-1/2"
             >
-              <X className="w-4 h-4 text-gray-400 group-hover:text-white" />
-            </motion.button>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={clearSearch}
+                className="w-6 h-6 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </motion.div>
           )}
         </div>
 
@@ -177,10 +186,22 @@ export default function ModernSearch({ onLocationSelect }: ModernSearchProps) {
                 key={index}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
+                whileHover={{
+                  x: 4,
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  boxShadow: '0 0 15px rgba(6, 182, 212, 0.2)',
+                }}
+                transition={{ delay: index * 0.05, type: 'spring', stiffness: 300 }}
                 onClick={() => handleSelect(result)}
-                className="w-full px-4 py-3 text-left hover:bg-white/10 transition-all border-b border-white/5 last:border-b-0 group"
+                className="w-full px-4 py-3 text-left transition-all border-b border-white/5 last:border-b-0 group relative overflow-hidden"
               >
+                {/* Hover shimmer effect */}
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
+                  initial={{ x: '-100%' }}
+                  whileHover={{ x: '100%' }}
+                  transition={{ duration: 0.6 }}
+                />
                 <div className="flex items-start gap-3">
                   {/* Different icons based on category */}
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
@@ -205,10 +226,10 @@ export default function ModernSearch({ onLocationSelect }: ModernSearchProps) {
 
                     {/* Category badge for industrial facilities */}
                     {result.category && result.category !== 'location' && (
-                      <div className="text-xs text-gray-300 mb-1">
-                        <span className="px-1.5 py-0.5 rounded bg-white/10">
+                      <div className="mb-1">
+                        <Badge variant="outline" className="text-xs">
                           {result.type || result.category}
-                        </span>
+                        </Badge>
                       </div>
                     )}
 

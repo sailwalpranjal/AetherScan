@@ -5,6 +5,8 @@ import { useState } from 'react'
 import { ChevronDown, Layers, Eye, EyeOff, Cloud, Flame, Users, Satellite, Factory, Map } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AVAILABLE_LAYERS } from '@/hooks/useMapLayers'
+import { Button } from '@/components/UI/button'
+import { Badge } from '@/components/UI/badge'
 
 interface ModernLayerManagerProps {
   activeLayers: string[]
@@ -56,7 +58,8 @@ export default function ModernLayerManager({
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3 }}
-      className="w-full glass rounded-2xl shadow-2xl border border-white/10 overflow-hidden flex flex-col max-h-[calc(100vh-12rem)]"
+      whileHover={{ boxShadow: '0 0 40px rgba(6, 182, 212, 0.3)' }}
+      className="w-full glass rounded-2xl shadow-2xl border border-white/10 overflow-hidden flex flex-col max-h-[calc(100vh-12rem)] backdrop-blur-xl"
     >
       {/* Header */}
       <div className="px-5 py-4 bg-gradient-to-r from-slate-900/90 to-slate-800/90 border-b border-white/10 flex-shrink-0">
@@ -91,18 +94,21 @@ export default function ModernLayerManager({
               className="rounded-xl overflow-hidden glass border border-white/10"
             >
               {/* Category Header */}
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => toggleCategory(category.id)}
-                className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-all group"
+                className="w-full px-4 py-3 flex items-center justify-between h-auto hover:bg-white/5 group"
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${category.color} flex items-center justify-center`}>
+                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${category.color} flex items-center justify-center shadow-lg`}>
                     <Icon className="w-4 h-4 text-white" />
                   </div>
                   <div className="text-left">
                     <div className="text-sm font-semibold text-white">{category.name}</div>
                     {activeCategoryCount > 0 && (
-                      <div className="text-xs text-cyan-400">{activeCategoryCount} active</div>
+                      <Badge variant="neon" className="mt-1">
+                        {activeCategoryCount} active
+                      </Badge>
                     )}
                   </div>
                 </div>
@@ -110,9 +116,9 @@ export default function ModernLayerManager({
                   animate={{ rotate: isExpanded ? 180 : 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
+                  <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-cyan-400 transition-colors" />
                 </motion.div>
-              </button>
+              </Button>
 
               {/* Layer List */}
               <AnimatePresence>
@@ -134,6 +140,13 @@ export default function ModernLayerManager({
                             key={layer.id}
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
+                            whileHover={{
+                              scale: 1.02,
+                              boxShadow: isActive
+                                ? '0 0 20px rgba(6, 182, 212, 0.4)'
+                                : '0 0 10px rgba(255, 255, 255, 0.1)',
+                            }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                             className={`
                               rounded-lg p-3 transition-all cursor-pointer
                               ${isActive ? 'bg-cyan-500/10 border border-cyan-500/30' : 'bg-white/5 border border-white/5 hover:border-white/10'}

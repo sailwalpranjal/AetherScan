@@ -1,6 +1,6 @@
 'use client'
 
-import { X, MapPin } from 'lucide-react'
+import { X, MapPin, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import type { AQIResult } from '@/lib/types'
 import { formatNumber } from '@/lib/utils'
 
@@ -31,37 +31,68 @@ export default function InfoPanel({ aqiData, coordinates, onClose }: Props) {
         </button>
       </div>
 
-      <div
-        className="rounded-lg p-4 mb-3"
-        style={{ backgroundColor: aqiData.color + '20', borderLeft: `4px solid ${aqiData.color}` }}
-      >
-        <div className="text-3xl font-bold text-white">{aqiData.aqi}</div>
-        <div className="text-sm font-semibold" style={{ color: aqiData.color }}>
-          {aqiData.category}
+      {aqiData.isUnavailable ? (
+        <div className="flex flex-col items-center justify-center p-6 bg-white/5 rounded-lg border border-white/10 mb-3">
+          <AlertTriangle className="w-8 h-8 text-yellow-500 mb-2" />
+          <span className="text-sm text-gray-300 font-medium">Data Unavailable</span>
+          <span className="text-xs text-gray-500 text-center mt-1">Real-time sensor network down or uncalibrated in this sector.</span>
         </div>
-        <div className="text-xs text-gray-400 mt-1">
-          Dominant: {aqiData.dominant_pollutant?.toUpperCase() || 'N/A'}
+      ) : aqiData.isStale ? (
+        <div className="flex flex-col items-center justify-center p-6 bg-white/5 rounded-lg border border-white/10 mb-3">
+          <CheckCircle2 className="w-8 h-8 text-gray-400 mb-2" />
+          <span className="text-sm text-gray-300 font-medium">Data Stale</span>
+          <span className="text-xs text-gray-500 text-center mt-1">Last reading was &gt;24 hours ago. Showing latest known state.</span>
         </div>
-      </div>
-
-      {aqiData.breakdowns && Object.keys(aqiData.breakdowns).length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold text-gray-400">Pollutant Breakdown</h4>
-          {Object.entries(aqiData.breakdowns).map(([param, data]) => (
-            <div key={param} className="bg-dark-card rounded p-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-300 uppercase">{param}</span>
-                <span className="text-white font-semibold">
-                  {formatNumber(data.concentration)}
-                </span>
+      ) : (
+        <>
+          <div
+            className="rounded-lg p-4 mb-3"
+            style={{ backgroundColor: aqiData.color + '20', borderLeft: `4px solid ${aqiData.color}` }}
+          >
+            <div className="text-3xl font-bold text-white">{aqiData.aqi}</div>
+            <div className="text-sm font-semibold" style={{ color: aqiData.color }}>
+              {aqiData.category}
+            </div>
+            <div className="text-xs text-gray-400 mt-1">
+              Dominant: {aqiData.dominant_pollutant?.toUpperCase() || 'N/A'}
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/10">
+              <div>
+                <div className="text-[10px] text-gray-500 uppercase">Data Quality</div>
+                <div className="text-sm font-mono text-cyan-400">
+                  {aqiData.dataQualityScore ? (aqiData.dataQualityScore * 100).toFixed(1) + '%' : 'N/A'}
+                </div>
               </div>
-              <div className="flex items-center justify-between text-xs mt-1">
-                <span className="text-gray-500">Sub-index:</span>
-                <span className="text-gray-300">{formatNumber(data.sub_index, 0)}</span>
+              <div>
+                <div className="text-[10px] text-gray-500 uppercase">Fusion Confidence</div>
+                <div className="text-sm font-mono text-purple-400">
+                  {aqiData.fusionConfidenceScore ? (aqiData.fusionConfidenceScore * 100).toFixed(1) + '%' : 'N/A'}
+                </div>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+
+          {aqiData.breakdowns && Object.keys(aqiData.breakdowns).length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-gray-400">Pollutant Breakdown</h4>
+              {Object.entries(aqiData.breakdowns).map(([param, data]) => (
+                <div key={param} className="bg-dark-card rounded p-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-300 uppercase">{param}</span>
+                    <span className="text-white font-semibold">
+                      {formatNumber(data.concentration)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs mt-1">
+                    <span className="text-gray-500">Sub-index:</span>
+                    <span className="text-gray-300">{formatNumber(data.sub_index, 0)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   )

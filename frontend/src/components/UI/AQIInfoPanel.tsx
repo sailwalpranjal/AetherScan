@@ -1,6 +1,6 @@
 'use client'
 
-import { Wind, Droplets, Factory, Flame, AlertTriangle, X } from 'lucide-react'
+import { Wind, Droplets, Factory, Flame, AlertTriangle, X, CheckCircle2 } from 'lucide-react'
 import { useMemo } from 'react'
 
 interface AQIData {
@@ -13,6 +13,10 @@ interface AQIData {
   state?: string
   latitude?: number
   longitude?: number
+  isUnavailable?: boolean
+  isStale?: boolean
+  dataQualityScore?: number
+  fusionConfidenceScore?: number
   pollutants?: {
     pm25?: number
     pm10?: number
@@ -55,7 +59,7 @@ export default function AQIInfoPanel({ data, onClose }: Props) {
   return (
     <div className="glass rounded-2xl shadow-2xl border border-white/10 overflow-hidden w-full max-w-md">
       {/* Header */}
-      <div className="relative p-4 border-b border-white/10" style={{ backgroundColor: data.color + '20' }}>
+      <div className="relative p-4 border-b border-white/10" style={{ backgroundColor: data.isUnavailable || data.isStale ? 'transparent' : data.color + '20' }}>
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"
@@ -63,32 +67,46 @@ export default function AQIInfoPanel({ data, onClose }: Props) {
           <X className="w-5 h-5" />
         </button>
 
-        <div className="flex items-start space-x-4">
-          <div
-            className="w-16 h-16 rounded-xl flex items-center justify-center font-bold text-2xl text-white shadow-lg"
-            style={{ backgroundColor: data.color }}
-          >
-            {data.aqi}
+        {data.isUnavailable ? (
+          <div className="flex flex-col items-center justify-center py-4">
+            <AlertTriangle className="w-10 h-10 text-yellow-500 mb-2" />
+            <span className="text-base text-gray-300 font-medium">Data Unavailable</span>
+            <span className="text-xs text-gray-500 text-center mt-2 max-w-xs">Real-time sensor network down or uncalibrated in this sector.</span>
           </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-bold text-white">{data.category}</h3>
-            {data.location && (
-              <p className="text-sm text-gray-300 mt-0.5">{data.location}</p>
-            )}
-            {(data.city || data.state) && (
-              <p className="text-xs text-gray-400 mt-1">
-                {[data.city, data.state].filter(Boolean).join(', ')}
-              </p>
-            )}
-            {data.latitude && data.longitude && (
-              <p className="text-xs text-gray-500 mt-1 font-mono">
-                {data.latitude.toFixed(4)}, {data.longitude.toFixed(4)}
-              </p>
-            )}
+        ) : data.isStale ? (
+          <div className="flex flex-col items-center justify-center py-4">
+            <CheckCircle2 className="w-10 h-10 text-gray-400 mb-2" />
+            <span className="text-base text-gray-300 font-medium">Data Stale</span>
+            <span className="text-xs text-gray-500 text-center mt-2 max-w-xs">Last reading was &gt;24 hours ago. Showing latest known state.</span>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-start space-x-4">
+            <div
+              className="w-16 h-16 rounded-xl flex items-center justify-center font-bold text-2xl text-white shadow-lg"
+              style={{ backgroundColor: data.color }}
+            >
+              {data.aqi}
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-white">{data.category}</h3>
+              {data.location && (
+                <p className="text-sm text-gray-300 mt-0.5">{data.location}</p>
+              )}
+              {(data.city || data.state) && (
+                <p className="text-xs text-gray-400 mt-1">
+                  {[data.city, data.state].filter(Boolean).join(', ')}
+                </p>
+              )}
+              {data.latitude && data.longitude && (
+                <p className="text-xs text-gray-500 mt-1 font-mono">
+                  {data.latitude.toFixed(4)}, {data.longitude.toFixed(4)}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
-        {data.dominant_pollutant && (
+        {!data.isUnavailable && !data.isStale && data.dominant_pollutant && (
           <div className="mt-3 flex items-center space-x-2">
             <AlertTriangle className="w-4 h-4 text-yellow-400" />
             <span className="text-xs text-gray-300">
@@ -97,9 +115,27 @@ export default function AQIInfoPanel({ data, onClose }: Props) {
           </div>
         )}
       </div>
+      
+      {/* Metrics Header */}
+      {(!data.isUnavailable && !data.isStale) && (
+        <div className="grid grid-cols-2 gap-4 px-4 py-3 bg-white/5 border-b border-white/10">
+          <div>
+            <div className="text-[10px] text-gray-500 uppercase font-semibold">Data Quality</div>
+            <div className="text-sm font-mono text-cyan-400">
+              {data.dataQualityScore ? (data.dataQualityScore * 100).toFixed(1) + '%' : 'N/A'}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] text-gray-500 uppercase font-semibold">Fusion Confidence</div>
+            <div className="text-sm font-mono text-purple-400">
+              {data.fusionConfidenceScore ? (data.fusionConfidenceScore * 100).toFixed(1) + '%' : 'N/A'}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pollutants Breakdown */}
-      {pollutantInfo.length > 0 && (
+      {!data.isUnavailable && !data.isStale && pollutantInfo.length > 0 && (
         <div className="p-4 space-y-3">
           <h4 className="text-sm font-semibold text-white mb-3">Pollutant Levels</h4>
           {pollutantInfo.map((pollutant) => {
@@ -146,17 +182,19 @@ export default function AQIInfoPanel({ data, onClose }: Props) {
       )}
 
       {/* Health Advice */}
-      <div className="px-4 pb-4 pt-2 border-t border-white/10">
-        <h4 className="text-sm font-semibold text-white mb-2">Health Advice</h4>
-        <p className="text-xs text-gray-400 leading-relaxed">
-          {data.category === 'Good' && 'Air quality is good. Ideal for outdoor activities.'}
-          {data.category === 'Satisfactory' && 'Air quality is acceptable. Sensitive individuals should limit prolonged outdoor exposure.'}
-          {data.category === 'Moderate' && 'Sensitive individuals may experience respiratory discomfort. Reduce outdoor activities.'}
-          {data.category === 'Poor' && 'Everyone may begin to experience health effects. Avoid outdoor activities.'}
-          {data.category === 'Very Poor' && 'Health alert: everyone may experience serious health effects. Stay indoors.'}
-          {data.category === 'Severe' && 'Health warning: serious health effects for everyone. Avoid all outdoor activities.'}
-        </p>
-      </div>
+      {!data.isUnavailable && !data.isStale && (
+        <div className="px-4 pb-4 pt-2 border-t border-white/10">
+          <h4 className="text-sm font-semibold text-white mb-2">Health Advice</h4>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            {data.category === 'Good' && 'Air quality is good. Ideal for outdoor activities.'}
+            {data.category === 'Satisfactory' && 'Air quality is acceptable. Sensitive individuals should limit prolonged outdoor exposure.'}
+            {data.category === 'Moderate' && 'Sensitive individuals may experience respiratory discomfort. Reduce outdoor activities.'}
+            {data.category === 'Poor' && 'Everyone may begin to experience health effects. Avoid outdoor activities.'}
+            {data.category === 'Very Poor' && 'Health alert: everyone may experience serious health effects. Stay indoors.'}
+            {data.category === 'Severe' && 'Health warning: serious health effects for everyone. Avoid all outdoor activities.'}
+          </p>
+        </div>
+      )}
 
       {/* CPCB Standard Footer */}
       <div className="px-4 py-2 bg-white/5 border-t border-white/10">

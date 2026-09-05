@@ -15,6 +15,10 @@ export interface AQIResult {
   }>
   latitude?: number
   longitude?: number
+  dataQualityScore?: number
+  fusionConfidenceScore?: number
+  isStale?: boolean
+  isUnavailable?: boolean
 }
 
 export interface LayerConfig {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Search, MapPin, X, Loader2 } from 'lucide-react'
+import { buildApiUrl } from '@/lib/api'
 
 interface SearchResult {
   name: string
@@ -47,7 +48,7 @@ export default function SearchBar({ onLocationSelect }: Props) {
       setLoading(true)
       try {
         const response = await fetch(
-          `http://localhost:8000/search/location?query=${encodeURIComponent(query)}&limit=5`
+          buildApiUrl(`/search/location?query=${encodeURIComponent(query)}&limit=5`)
         )
 
         if (!response.ok) throw new Error('Search failed')
