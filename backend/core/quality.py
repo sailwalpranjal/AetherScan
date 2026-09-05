@@ -108,12 +108,12 @@ def calculate_freshness(
 ) -> float:
     """
     Calculate freshness score Q_fresh in [0.0, 1.0].
-    
+
     Formula:
     - If dt < 1 hour: Q_fresh = 1.0
     - If 1 hour <= dt <= 24 hours: Q_fresh = exp(-decay_lambda * dt) (default lambda = 0.1)
     - If dt > 24 hours: Q_fresh = 0.0 (Stale data)
-    
+
     Future timestamps (e.g. clock skew <= 5 minutes) are treated as dt = 0.0 (Q_fresh = 1.0).
     Timestamps farther in the future (> 5 mins) are considered invalid (Q_fresh = 0.0).
     """
@@ -121,6 +121,7 @@ def calculate_freshness(
     if t_norm is None:
         return 0.0
 
+    r_norm: Optional[datetime] = None
     if ref_time is None:
         r_norm = datetime.now(timezone.utc)
     else:
@@ -140,11 +141,25 @@ def calculate_freshness(
             # Future timestamp anomaly
             return 0.0
 
+    # Validate decay_lambda: fallback to default 0.1 if invalid, non-finite, or <= 0.0
+    try:
+        lam = float(decay_lambda)
+        if not math.isfinite(lam) or lam <= 0.0:
+            lam = 0.1
+    except (TypeError, ValueError):
+        lam = 0.1
+
     if dt_hours < 1.0:
         q_fresh = 1.0
     elif dt_hours <= 24.0:
-        q_fresh = math.exp(-decay_lambda * dt_hours)
+        try:
+            q_fresh = math.exp(-lam * dt_hours)
+        except OverflowError:
+            q_fresh = 0.0
     else:
+        q_fresh = 0.0
+
+    if not math.isfinite(q_fresh):
         q_fresh = 0.0
 
     return round(max(0.0, min(1.0, float(q_fresh))), 6)
@@ -165,9 +180,14 @@ def calculate_spatial_representativeness(
         return 0.9
 
     try:
-        d = max(0.0, float(distance_km))
+        d = float(distance_km)
     except (TypeError, ValueError):
         return 0.1
+
+    if math.isnan(d) or math.isinf(d):
+        return 0.1
+
+    d = max(0.0, d)
 
     if d >= 50.0:
         return 0.1
@@ -318,6 +338,7 @@ def calculate_fcs(
     - Disagreement: penalized by coefficient of variation (sigma / mu).
     - If mu == 0 and all values are 0, penalty factor is 1.0; otherwise 0.0.
     - Clamped strictly to [0.0, 1.0].
+    - Corrupt, NaN, or non-finite inputs return 0.0.
     """
     if not dqs_values or not values:
         return 0.0
@@ -329,30 +350,68 @@ def calculate_fcs(
 
     n = len(values)
 
-    clean_dqs = [max(0.0, min(1.0, float(d))) for d in dqs_values]
-    clean_vals = [float(v) for v in values]
+    if weights is not None and len(weights) != n:
+        raise ValueError(
+            f"weights and values must have the same length (got {len(weights)} and {n})"
+        )
 
+    # 1. Sanitize dqs_values: ensure finite, clamped [0.0, 1.0]; non-finite/invalid -> 0.0
+    clean_dqs: List[float] = []
+    for d in dqs_values:
+        try:
+            val_d = float(d)
+            if not math.isfinite(val_d):
+                clean_dqs.append(0.0)
+            else:
+                clean_dqs.append(max(0.0, min(1.0, val_d)))
+        except (TypeError, ValueError):
+            clean_dqs.append(0.0)
+
+    # 2. Sanitize values: if any observation is non-finite or uncomputable, abort to 0.0
+    clean_vals: List[float] = []
+    for v in values:
+        try:
+            val_v = float(v)
+            if not math.isfinite(val_v):
+                return 0.0
+            clean_vals.append(val_v)
+        except (TypeError, ValueError):
+            return 0.0
+
+    # 3. Sanitize weights: non-finite or negative weights treated as 0.0
+    clean_weights: List[float] = []
     if weights is None:
-        w = [1.0] * n
+        clean_weights = [1.0] * n
     else:
-        if len(weights) != n:
-            raise ValueError(
-                f"weights and values must have the same length (got {len(weights)} and {n})"
-            )
-        w = [float(wt) for wt in weights]
+        for wt in weights:
+            try:
+                val_w = float(wt)
+                if not math.isfinite(val_w) or val_w <= 0.0:
+                    clean_weights.append(0.0)
+                else:
+                    clean_weights.append(val_w)
+            except (TypeError, ValueError):
+                clean_weights.append(0.0)
 
-    total_weight = sum(w)
-    if total_weight <= 0.0:
+    total_weight = sum(clean_weights)
+    if not math.isfinite(total_weight) or total_weight <= 0.0:
         return 0.0
 
-    weighted_dqs = sum(d * wt for d, wt in zip(clean_dqs, w)) / total_weight
+    weighted_dqs = sum(d * wt for d, wt in zip(clean_dqs, clean_weights)) / total_weight
+    if not math.isfinite(weighted_dqs) or weighted_dqs <= 0.0:
+        return 0.0
+    weighted_dqs = min(1.0, weighted_dqs)
 
     # Single source
     if n == 1:
-        return round(max(0.0, min(1.0, clean_dqs[0])), 6)
+        if not math.isfinite(clean_dqs[0]) or clean_dqs[0] <= 0.0:
+            return 0.0
+        return round(min(1.0, clean_dqs[0]), 6)
 
     # Multi-source dispersion
     mu = sum(clean_vals) / n
+    if not math.isfinite(mu):
+        return 0.0
 
     if abs(mu) < 1e-12:
         if all(abs(v) < 1e-12 for v in clean_vals):
@@ -361,11 +420,25 @@ def calculate_fcs(
             penalty = 0.0
     else:
         variance = sum((v - mu) ** 2 for v in clean_vals) / n
+        if not math.isfinite(variance) or variance < 0.0:
+            return 0.0
         sigma = math.sqrt(variance)
-        penalty = max(0.0, 1.0 - (sigma / abs(mu)))
+        if not math.isfinite(sigma):
+            return 0.0
+        ratio = sigma / abs(mu)
+        if not math.isfinite(ratio):
+            penalty = 0.0
+        else:
+            penalty = max(0.0, 1.0 - ratio)
 
-    fcs = weighted_dqs * penalty
-    return round(max(0.0, min(1.0, float(fcs))), 6)
+    if not math.isfinite(penalty) or penalty <= 0.0:
+        return 0.0
+
+    fcs = weighted_dqs * min(1.0, penalty)
+    if not math.isfinite(fcs) or fcs <= 0.0:
+        return 0.0
+
+    return round(min(1.0, fcs), 6)
 
 
 def get_fcs_confidence_level(fcs: float) -> str:

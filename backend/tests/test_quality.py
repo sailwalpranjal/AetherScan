@@ -140,6 +140,54 @@ class TestFreshness:
         # Invalid string
         assert calculate_freshness("not-a-date", ref_time=ref_time) == 0.0
 
+    def test_negative_decay_lambda_fallback_and_overflow_prevention(self):
+        """Negative decay_lambda must not cause OverflowError and should fallback to default 0.1."""
+        ref_time = datetime(2026, 9, 5, 12, 0, 0, tzinfo=timezone.utc)
+        t_12h = ref_time - timedelta(hours=12)
+        expected_default = round(math.exp(-0.1 * 12.0), 6)  # ~0.301194
+
+        # Extreme negative lambda that would otherwise cause math.exp() OverflowError
+        res_overflow = calculate_freshness(t_12h, ref_time=ref_time, decay_lambda=-1000.0)
+        assert res_overflow == pytest.approx(expected_default, abs=1e-5)
+
+        # Moderate negative lambda that would otherwise falsely inflate freshness to 1.0
+        res_negative = calculate_freshness(t_12h, ref_time=ref_time, decay_lambda=-0.5)
+        assert res_negative == pytest.approx(expected_default, abs=1e-5)
+
+    def test_nan_and_inf_decay_lambda_handling(self):
+        """NaN and Inf decay_lambda must not corrupt calculation or produce NaN/1.0."""
+        ref_time = datetime(2026, 9, 5, 12, 0, 0, tzinfo=timezone.utc)
+        t_12h = ref_time - timedelta(hours=12)
+        expected_default = round(math.exp(-0.1 * 12.0), 6)
+
+        # NaN lambda must fallback to default 0.1 instead of returning 1.0
+        res_nan = calculate_freshness(t_12h, ref_time=ref_time, decay_lambda=float("nan"))
+        assert res_nan == pytest.approx(expected_default, abs=1e-5)
+
+        # Infinite lambda (+inf and -inf)
+        res_pos_inf = calculate_freshness(t_12h, ref_time=ref_time, decay_lambda=float("inf"))
+        assert res_pos_inf == pytest.approx(expected_default, abs=1e-5)
+
+        res_neg_inf = calculate_freshness(t_12h, ref_time=ref_time, decay_lambda=-float("inf"))
+        assert res_neg_inf == pytest.approx(expected_default, abs=1e-5)
+
+    def test_zero_and_invalid_type_decay_lambda(self):
+        """Zero or non-numeric decay_lambda must fallback to default 0.1."""
+        ref_time = datetime(2026, 9, 5, 12, 0, 0, tzinfo=timezone.utc)
+        t_12h = ref_time - timedelta(hours=12)
+        expected_default = round(math.exp(-0.1 * 12.0), 6)
+
+        # Zero decay lambda
+        res_zero = calculate_freshness(t_12h, ref_time=ref_time, decay_lambda=0.0)
+        assert res_zero == pytest.approx(expected_default, abs=1e-5)
+
+        # Non-numeric string and None
+        res_none = calculate_freshness(t_12h, ref_time=ref_time, decay_lambda=None)
+        assert res_none == pytest.approx(expected_default, abs=1e-5)
+
+        res_str = calculate_freshness(t_12h, ref_time=ref_time, decay_lambda="invalid_lambda")
+        assert res_str == pytest.approx(expected_default, abs=1e-5)
+
 
 # ============================================================================
 # 2. Spatial Representativeness Tests (Q_spatial)
@@ -174,6 +222,28 @@ class TestSpatialRepresentativeness:
         assert calculate_spatial_representativeness(0.0, is_satellite=True) == 0.90
         assert calculate_spatial_representativeness(50.0, is_satellite=True) == 0.90
         assert calculate_spatial_representativeness(200.0, is_satellite=True) == 0.90
+
+    def test_nan_distance_returns_minimum_spatial(self):
+        """NaN distance must not be treated as 0 km (1.0); must return safe minimum 0.1."""
+        assert calculate_spatial_representativeness(float("nan")) == 0.1
+        assert calculate_spatial_representativeness("nan") == 0.1
+
+    def test_inf_distance_returns_minimum_spatial(self):
+        """Infinite distances (+inf and -inf) must return safe minimum 0.1."""
+        assert calculate_spatial_representativeness(float("inf")) == 0.1
+        assert calculate_spatial_representativeness(-float("inf")) == 0.1
+        assert calculate_spatial_representativeness("inf") == 0.1
+        assert calculate_spatial_representativeness("-inf") == 0.1
+
+    def test_none_and_non_numeric_distance(self):
+        """None and invalid non-numeric strings must return minimum 0.1."""
+        assert calculate_spatial_representativeness(None) == 0.1
+        assert calculate_spatial_representativeness("invalid_distance") == 0.1
+
+    def test_satellite_distance_invariance_with_non_finite(self):
+        """Satellite representativeness remains 0.90 regardless of NaN or Inf distance."""
+        assert calculate_spatial_representativeness(float("nan"), is_satellite=True) == 0.90
+        assert calculate_spatial_representativeness(float("inf"), is_satellite=True) == 0.90
 
 
 # ============================================================================
@@ -407,6 +477,51 @@ class TestDataQualityScore:
         assert breakdown["q_spatial"] == pytest.approx(0.82, abs=1e-5)
         assert breakdown["dqs"] == pytest.approx(breakdown["q_fresh"] * 0.82 * 1.0 * 1.0, abs=1e-5)
 
+    def test_dqs_with_nan_and_inf_distance(self):
+        """DQS must not be inflated to 1.0 when distance_km is NaN or Inf."""
+        ref_time = datetime(2026, 9, 5, 12, 0, 0, tzinfo=timezone.utc)
+        # With distance_km=float('nan'), Q_spatial should be 0.1, not 1.0.
+        # DQS = Q_fresh(1.0) * Q_spatial(0.1) * Q_sensor(1.0) * Q_valid(1.0) = 0.1.
+        dqs_nan = calculate_dqs(
+            value=25.0,
+            parameter="pm25",
+            timestamp=ref_time,
+            distance_km=float("nan"),
+            sensor_type="reference",
+            ref_time=ref_time,
+        )
+        assert dqs_nan == 0.1
+
+        dqs_none = calculate_dqs(
+            value=25.0,
+            parameter="pm25",
+            timestamp=ref_time,
+            distance_km=None,
+            sensor_type="reference",
+            ref_time=ref_time,
+        )
+        assert dqs_nan == dqs_none == 0.1
+
+        dqs_pos_inf = calculate_dqs(
+            value=25.0,
+            parameter="pm25",
+            timestamp=ref_time,
+            distance_km=float("inf"),
+            sensor_type="reference",
+            ref_time=ref_time,
+        )
+        assert dqs_pos_inf == 0.1
+
+        dqs_neg_inf = calculate_dqs(
+            value=25.0,
+            parameter="pm25",
+            timestamp=ref_time,
+            distance_km=-float("inf"),
+            sensor_type="reference",
+            ref_time=ref_time,
+        )
+        assert dqs_neg_inf == 0.1
+
 
 # ============================================================================
 # 6. Fusion Confidence Score Tests (calculate_fcs)
@@ -494,3 +609,74 @@ class TestFusionConfidenceScore:
         assert get_fcs_confidence_level(0.50) == "LOW"
         assert get_fcs_confidence_level(0.20) == "LOW"
         assert get_fcs_confidence_level(0.0) == "LOW"
+
+    def test_fcs_single_source_nan_and_inf_dqs(self):
+        """Single source FCS must return 0.0 when DQS is NaN or Inf, not 1.0."""
+        assert calculate_fcs([float("nan")], [10.0]) == 0.0
+        assert calculate_fcs([float("inf")], [10.0]) == 0.0
+        assert calculate_fcs([-float("inf")], [10.0]) == 0.0
+
+    def test_fcs_multi_source_nan_and_inf_dqs(self):
+        """Multi-source FCS with all or mixed NaN/Inf DQS values must not inflate to 1.0."""
+        # All NaN DQS -> 0.0
+        assert calculate_fcs([float("nan"), float("nan")], [10.0, 10.0]) == 0.0
+        assert calculate_fcs([float("inf"), float("nan")], [10.0, 10.0]) == 0.0
+
+        # Mixed: source 0 has NaN DQS (sanitized to 0.0), source 1 has DQS=0.8
+        # Weighted DQS = (0.0*1 + 0.8*1)/2 = 0.4. Penalty = 1.0 -> FCS = 0.4
+        fcs_mixed = calculate_fcs([float("nan"), 0.8], [10.0, 10.0])
+        assert fcs_mixed == pytest.approx(0.4, abs=1e-5)
+
+        # Inf DQS sanitized to 0.0
+        fcs_inf_mixed = calculate_fcs([float("inf"), 0.8], [10.0, 10.0])
+        assert fcs_inf_mixed == pytest.approx(0.4, abs=1e-5)
+
+    def test_fcs_nan_and_inf_weights(self):
+        """Non-finite or invalid weights must be sanitized to 0.0 and never inflate FCS to 1.0."""
+        # All weights NaN/Inf -> total_weight == 0.0 -> FCS = 0.0
+        assert calculate_fcs([0.8, 0.8], [10.0, 10.0], weights=[float("nan"), float("nan")]) == 0.0
+        assert calculate_fcs([0.8, 0.8], [10.0, 10.0], weights=[float("inf"), float("inf")]) == 0.0
+
+        # Mixed weights: NaN weight sanitized to 0.0, remaining weight retains valid source
+        # weights = [0.0, 1.0] -> weighted DQS = (0.2*0.0 + 0.2*1.0) / 1.0 = 0.2 -> FCS = 0.2
+        fcs_nan_wt = calculate_fcs([0.2, 0.2], [10.0, 10.0], weights=[float("nan"), 1.0])
+        assert fcs_nan_wt == pytest.approx(0.2, abs=1e-5)
+
+        # Mixed weights with Inf: Inf sanitized to 0.0
+        # weights = [0.0, 1.0] -> weighted DQS = 0.5 -> FCS = 0.5
+        fcs_inf_wt = calculate_fcs([0.5, 0.5], [10.0, 10.0], weights=[float("inf"), 1.0])
+        assert fcs_inf_wt == pytest.approx(0.5, abs=1e-5)
+
+        # Negative weights sanitized to 0.0
+        assert calculate_fcs([0.8, 0.8], [10.0, 10.0], weights=[-1.0, -2.0]) == 0.0
+        fcs_neg_wt = calculate_fcs([0.8, 0.4], [10.0, 10.0], weights=[-1.0, 2.0])
+        assert fcs_neg_wt == pytest.approx(0.4, abs=1e-5)
+
+    def test_fcs_nan_and_inf_values(self):
+        """Values containing NaN or Inf must return FCS = 0.0 (uncomputable/corrupt data)."""
+        # Single source with NaN / Inf value
+        assert calculate_fcs([0.8], [float("nan")]) == 0.0
+        assert calculate_fcs([0.8], [float("inf")]) == 0.0
+        assert calculate_fcs([0.8], [-float("inf")]) == 0.0
+
+        # Multi source with NaN value
+        assert calculate_fcs([0.8, 0.8], [float("nan"), 10.0]) == 0.0
+        assert calculate_fcs([0.8, 0.8], [10.0, float("nan")]) == 0.0
+        assert calculate_fcs([0.8, 0.8], [float("nan"), float("nan")]) == 0.0
+
+        # Multi source with Inf value
+        assert calculate_fcs([0.8, 0.8], [float("inf"), 10.0]) == 0.0
+        assert calculate_fcs([0.8, 0.8], [10.0, -float("inf")]) == 0.0
+        assert calculate_fcs([0.8, 0.8], [float("inf"), float("inf")]) == 0.0
+
+    def test_fcs_never_returns_nan_or_out_of_bounds(self):
+        """FCS must never return NaN, Inf, or values outside [0.0, 1.0] under hostile combinations."""
+        hostile_dqs = [float("nan"), float("inf"), -1.0, 2.0, 0.5]
+        hostile_vals = [float("nan"), 1e12, -1e12, float("inf"), 0.0]
+        hostile_w = [float("nan"), float("inf"), -5.0, 0.0, 1.0]
+
+        res = calculate_fcs(hostile_dqs, hostile_vals, weights=hostile_w)
+        assert isinstance(res, float)
+        assert not math.isnan(res)
+        assert not math.isinf(res)
+        assert 0.0 <= res <= 1.0
