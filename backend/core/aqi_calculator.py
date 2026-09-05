@@ -1,5 +1,4 @@
 from typing import Dict, Tuple, Optional
-import numpy as np
 
 class CPCBAQICalculator:
     # Format: {pollutant: [(C_low, C_high, I_low, I_high), ...]}
