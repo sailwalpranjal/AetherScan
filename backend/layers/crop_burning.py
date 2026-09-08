@@ -7,13 +7,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-async def get_crop_burning_fires(days: int = 7) -> Dict:
+async def get_crop_burning_fires(days: int = 5) -> Dict:
     """Get recent crop burning fire detections from real NASA FIRMS data."""
     source = 'NASA FIRMS'
     features = []
+    effective_days = max(1, min(int(days), 5))
 
     try:
-        fires = await nasa_firms_loader.fetch_active_fires(days=days)
+        fires = await nasa_firms_loader.fetch_active_fires(days=effective_days)
 
         for fire in fires:
             features.append({
