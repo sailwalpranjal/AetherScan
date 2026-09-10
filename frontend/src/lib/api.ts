@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AQIResult, HeatmapData, GeoJSONLayer, WMSLayer, TimeSeriesData } from './types'
+import type { AQIResult, HeatmapData, GeoJSONLayer, WMSLayer, TimeSeriesData, FacilityEvidenceChain } from './types'
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
@@ -175,6 +175,49 @@ export const tilesAPI = {
 
   getVectorTileURL: (z: number, x: number, y: number, layer: string = 'sensors'): string => {
     return `${API_BASE_URL}/tiles/vector/${z}/${x}/${y}.geojson?layer=${layer}`
+  },
+}
+
+// Facility Intelligence Endpoints
+export const facilityAPI = {
+  list: async (params?: { skip?: number; limit?: number; facility_type?: string; state?: string; search?: string }) => {
+    const response = await api.get('/facility/list', { params })
+    return response.data
+  },
+
+  nearby: async (lat: number, lon: number, radiusKm: number = 25, limit: number = 20) => {
+    const response = await api.get('/facility/nearby', { params: { lat, lon, radius_km: radiusKm, limit } })
+    return response.data
+  },
+
+  getEvidenceChain: async (
+    facilityId: number | string,
+    radiusKm: number = 10,
+    lat?: number,
+    lon?: number,
+    name?: string
+  ): Promise<FacilityEvidenceChain> => {
+    const params: Record<string, any> = { radius_km: radiusKm }
+    if (lat !== undefined && !isNaN(lat)) params.lat = lat
+    if (lon !== undefined && !isNaN(lon)) params.lon = lon
+    if (name) params.name = name
+    const response = await api.get(`/facility/${encodeURIComponent(facilityId)}/evidence-chain`, { params })
+    return response.data
+  },
+
+  getStandards: async (pollutant?: string, jurisdiction?: string) => {
+    const response = await api.get('/facility/standards', { params: { pollutant, jurisdiction } })
+    return response.data
+  },
+
+  checkCompliance: async (pollutant: string, value: number, unit?: string, jurisdiction?: string) => {
+    const response = await api.post('/facility/compliance/check', {
+      pollutant,
+      value,
+      unit: unit || 'ug/m3',
+      jurisdiction: jurisdiction || 'India'
+    })
+    return response.data
   },
 }
 

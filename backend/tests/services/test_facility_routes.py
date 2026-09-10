@@ -159,3 +159,21 @@ async def test_evidence_chain_not_found():
         assert resp.status_code == 404
         assert "not found" in resp.json()["detail"].lower()
 
+
+@pytest.mark.asyncio
+async def test_evidence_chain_fallback_coords():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Non-existent ID, but provided fallback coordinates
+        resp = await client.get(
+            "/facility/custom_point/evidence-chain?radius_km=15.0&lat=28.505&lon=77.305&name=Custom+Plant"
+        )
+        assert resp.status_code == 200
+        chain = resp.json()
+        assert chain["facility"]["name"] == "Custom Plant"
+        assert chain["facility"]["latitude"] == 28.505
+        assert chain["facility"]["longitude"] == 77.305
+        assert "ground_sensors" in chain
+        assert "ambient_quality" in chain
+
+

@@ -183,7 +183,10 @@ async def check_custom_compliance(req: ComplianceCheckRequest) -> Dict[str, Any]
 @router.get("/{facility_id}/evidence-chain")
 async def get_facility_evidence_chain(
     facility_id: str = Path(..., description="Facility identifier"),
-    radius_km: float = Query(10.0, ge=1.0, le=100.0, description="Radial analysis buffer in km")
+    radius_km: float = Query(10.0, ge=1.0, le=100.0, description="Radial analysis buffer in km"),
+    lat: Optional[float] = Query(None, ge=-90.0, le=90.0, description="Optional latitude if facility not indexed in database"),
+    lon: Optional[float] = Query(None, ge=-180.0, le=180.0, description="Optional longitude if facility not indexed in database"),
+    name: Optional[str] = Query(None, description="Optional facility name fallback")
 ) -> Dict[str, Any]:
     """
     Assemble the complete Environmental Evidence Chain for an industrial facility.
@@ -192,7 +195,13 @@ async def get_facility_evidence_chain(
     """
     service = _get_service()
     try:
-        chain = await service.get_evidence_chain(facility_id=facility_id, radius_km=radius_km)
+        chain = await service.get_evidence_chain(
+            facility_id=facility_id,
+            radius_km=radius_km,
+            fallback_lat=lat,
+            fallback_lon=lon,
+            fallback_name=name
+        )
         return chain
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

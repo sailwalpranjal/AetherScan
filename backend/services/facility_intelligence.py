@@ -685,6 +685,9 @@ class FacilityIntelligenceService:
         facility_id: Union[str, int],
         radius_km: float = 10.0,
         ref_time: Optional[Union[datetime, str]] = None,
+        fallback_lat: Optional[float] = None,
+        fallback_lon: Optional[float] = None,
+        fallback_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Assemble the comprehensive multi-sensor Environmental Evidence Chain for a facility.
@@ -702,9 +705,21 @@ class FacilityIntelligenceService:
         """
         facility_row = await self._fetch_facility(facility_id)
         if not facility_row:
-            raise ValueError(f"Facility {facility_id} not found.")
+            if fallback_lat is not None and fallback_lon is not None:
+                facility = {
+                    "id": facility_id,
+                    "name": fallback_name or f"Facility {facility_id}",
+                    "type": "industrial",
+                    "latitude": float(fallback_lat),
+                    "longitude": float(fallback_lon),
+                    "state": "IND",
+                    "capacity": "N/A",
+                }
+            else:
+                raise ValueError(f"Facility {facility_id} not found.")
+        else:
+            facility = dict(facility_row)
 
-        facility = dict(facility_row)
         fac_lat = float(facility["latitude"])
         fac_lon = float(facility["longitude"])
 

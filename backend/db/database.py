@@ -231,6 +231,50 @@ class DatabaseManager:
         async with self._db.execute(query, params) as cursor:
             return await cursor.fetchone()
 
+    async def seed_industries_if_needed(self):
+        """Seed industries table with real GPPD power plants if table is empty (non-memory DBs only)."""
+        if str(self._db_path) == ":memory:":
+            return
+        try:
+            row = await self.fetch_one("SELECT count(*) as cnt FROM industries")
+            if row and row["cnt"] > 0:
+                return
+
+            try:
+                from data_sources.global_power_plant_loader import global_power_plant_loader
+            except ImportError:
+                from backend.data_sources.global_power_plant_loader import global_power_plant_loader
+
+            plants = global_power_plant_loader.load_india_power_plants()
+            if not plants:
+                return
+
+            rows_to_insert = [
+                (
+                    p.get("name", "Unknown Plant"),
+                    p.get("primary_fuel", "power_plant"),
+                    float(p.get("latitude")),
+                    float(p.get("longitude")),
+                    "IND",
+                    f"{p.get('capacity_mw', 0)} MW"
+                )
+                for p in plants
+                if p.get("latitude") is not None and p.get("longitude") is not None
+            ]
+
+            if self._db and rows_to_insert:
+                await self._db.executemany(
+                    """
+                    INSERT INTO industries (name, type, latitude, longitude, state, capacity)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    rows_to_insert
+                )
+                await self._db.commit()
+                logger.info(f"Seeded {len(rows_to_insert)} industrial facilities into database.")
+        except Exception as e:
+            logger.warning(f"Could not seed industries: {e}")
+
     async def close(self):
         """Close database connection."""
         if self._db:

@@ -38,6 +38,7 @@ async def lifespan(app: FastAPI):
 
     # Initialize database
     await db_manager.initialize()
+    await db_manager.seed_industries_if_needed()
     print("\n[OK] Database initialized")
 
     # Initialize AQICN service
