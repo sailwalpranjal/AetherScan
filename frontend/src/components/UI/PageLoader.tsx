@@ -9,11 +9,11 @@ interface PageLoaderProps {
   isLoading: boolean
 }
 
-// Particle component for floating particles
+// Particle component for floating particles (deterministic to prevent hydration mismatch)
 const Particle = ({ index }: { index: number }) => {
-  const randomX = Math.random() * 100
-  const randomDelay = Math.random() * 2
-  const randomDuration = 3 + Math.random() * 4
+  const randomX = ((index * 37 + 13) % 100)
+  const randomDelay = ((index * 17) % 20) / 10
+  const randomDuration = 3 + ((index * 23) % 40) / 10
 
   return (
     <motion.div
@@ -92,9 +92,9 @@ export default function PageLoader({ isLoading }: PageLoaderProps) {
       const interval = setInterval(() => {
         setProgress((prev) => {
           if (prev >= 100) return 100
-          return prev + Math.random() * 15
+          return Math.min(100, prev + 12.5)
         })
-      }, 150)
+      }, 120)
       return () => clearInterval(interval)
     }
   }, [isLoading])

@@ -2,7 +2,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 
 interface Particle {
   id: number
@@ -15,17 +15,25 @@ interface Particle {
 }
 
 export default function FloatingParticles({ count = 30 }: { count?: number }) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const particles = useMemo<Particle[]>(() => {
     return Array.from({ length: count }, (_, i) => ({
       id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 4 + 1,
-      duration: Math.random() * 20 + 10,
-      delay: Math.random() * 5,
-      color: ['cyan', 'blue', 'purple'][Math.floor(Math.random() * 3)],
+      x: ((i * 37 + 13) % 100),
+      y: ((i * 59 + 29) % 100),
+      size: (i % 4) + 1.5,
+      duration: ((i * 7) % 20) + 10,
+      delay: ((i * 3) % 5),
+      color: ['cyan', 'blue', 'purple'][i % 3],
     }))
   }, [count])
+
+  if (!mounted) return null
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
