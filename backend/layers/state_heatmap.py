@@ -114,16 +114,16 @@ def _get_fallback_state_data() -> List[Dict]:
     return []
 
 
+import asyncio
+from data_sources.openaq_loader import openaq_loader
+from data_sources.aqicn_service import get_aqicn_service
+
+
 async def get_state_wise_pollution() -> Dict:
     """
-    Get pollution aggregated by state using multiple data sources
-
-    Returns:
-        Dict with state-level pollution data
+    Get pollution aggregated by state using real OpenAQ ground observations
+    with AQICN supplementation when needed.
     """
-    import asyncio
-    from data_sources.aqicn_service import get_aqicn_service
-
     features = []
     state_data = {}
     data_source = 'None'
@@ -139,6 +139,14 @@ async def get_state_wise_pollution() -> Dict:
                 value = measure.get('value', 0)
 
                 matched_state = _match_city_to_state(city)
+                if not matched_state and measure.get('latitude') and measure.get('longitude'):
+                    lat, lon = measure['latitude'], measure['longitude']
+                    for s_name, s_info in STATE_DATA.items():
+                        c_lat, c_lon = s_info['centroid']
+                        if ((lat - c_lat) ** 2 + (lon - c_lon) ** 2) ** 0.5 < 2.5:
+                            matched_state = s_name
+                            break
+
                 if not matched_state:
                     continue
 
@@ -150,51 +158,42 @@ async def get_state_wise_pollution() -> Dict:
 
             if state_data:
                 data_source = 'OpenAQ'
-                print(f"[OK] OpenAQ: Found data for {len(state_data)} states")
     except Exception as e:
-        logger.warning(f"OpenAQ error: {e}")
+        logger.warning(f"OpenAQ error in state heatmap: {e}")
 
-    # If OpenAQ didn't provide enough data, supplement with AQICN
     if len(state_data) < 10:
         try:
+            from data_sources.aqicn_service import get_aqicn_service
             aqicn_service = get_aqicn_service()
             if aqicn_service:
-                # Query major cities for each state
                 for state_name, state_info in STATE_DATA.items():
                     if state_name in state_data and len(state_data[state_name]) >= 2:
-                        continue  # Already have data for this state
-
-                    # Try first city for this state
+                        continue
                     cities = state_info.get('cities', [])
                     if cities:
                         try:
-                            # Note: get_aqi_by_city_name returns data directly (not wrapped in status)
                             result = await aqicn_service.get_aqi_by_city_name(cities[0])
-                            # result IS the data since _make_request returns data.get('data', {})
                             if result and 'aqi' in result:
                                 aqi_val = result['aqi']
                                 if aqi_val != '-' and isinstance(aqi_val, (int, float)):
                                     if state_name not in state_data:
                                         state_data[state_name] = {}
-                                    # AQICN returns overall AQI, estimate PM2.5
-                                    state_data[state_name]['pm25'] = [aqi_val * 0.5]  # Rough estimate
+                                    state_data[state_name]['pm25'] = [aqi_val * 0.5]
                                     state_data[state_name]['aqi_direct'] = [int(aqi_val)]
-                                    print(f"[OK] AQICN: Got AQI {aqi_val} for {state_name}")
-                            await asyncio.sleep(0.1)  # Rate limiting
+                            await asyncio.sleep(0.01)
                         except Exception:
                             continue
-
-                if len(state_data) > 10:
+                if len(state_data) > 0 and data_source == 'None':
+                    data_source = 'AQICN'
+                elif len(state_data) > 10:
                     data_source = 'OpenAQ + AQICN'
-                    print(f"[OK] AQICN: Supplemented to {len(state_data)} states")
         except Exception as e:
-            logger.warning(f"AQICN error: {e}")
+            logger.warning(f"AQICN error in state heatmap: {e}")
 
     # Calculate AQI for each state
     for state_name, pollutants in state_data.items():
         avg_pollutants = {}
 
-        # Check for direct AQI from AQICN
         if 'aqi_direct' in pollutants:
             aqi_value = int(sum(pollutants['aqi_direct']) / len(pollutants['aqi_direct'])) if pollutants['aqi_direct'] else 0
             if aqi_value <= 50:
@@ -217,7 +216,6 @@ async def get_state_wise_pollution() -> Dict:
                 'dominant_pollutant': 'PM2.5'
             }
         else:
-            # Calculate from pollutant values
             for param, values in pollutants.items():
                 if values and param != 'aqi_direct':
                     avg_pollutants[param] = sum(values) / len(values) if values else 0.0
@@ -229,7 +227,6 @@ async def get_state_wise_pollution() -> Dict:
 
         if state_name in STATE_DATA:
             lat, lon = STATE_DATA[state_name]['centroid']
-
             features.append({
                 'type': 'Feature',
                 'geometry': {
@@ -247,16 +244,16 @@ async def get_state_wise_pollution() -> Dict:
                 }
             })
 
-    # Zero-Fake-Data Invariant: If no data from APIs, return empty collection cleanly
     if not features:
         data_source = 'None'
 
-    logger.info(f"Returning {len(features)} state pollution aggregations from {data_source}")
-
-    return {
+    result = {
         'type': 'FeatureCollection',
         'features': features,
         'count': len(features),
         'source': data_source,
         'description': 'State-wise pollution aggregation with AQI'
     }
+
+    logger.info(f"Returning {len(features)} state pollution aggregations from {data_source}")
+    return result

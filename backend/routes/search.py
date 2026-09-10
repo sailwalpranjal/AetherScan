@@ -152,83 +152,61 @@ async def search_industries(
         raise HTTPException(status_code=422, detail="Query must be at least 2 characters long")
 
     try:
-        from layers import power_plants, industry_overlay, refineries
+        from db.database import db_manager
+        from data_sources.global_power_plant_loader import global_power_plant_loader
 
         results = []
         query_lower = search_term.lower()
 
-        # Search power plants
+        # 1. Query SQLite database
         try:
-            power_plant_data = await power_plants.get_power_plants()
-            if power_plant_data and 'features' in power_plant_data:
-                for feature in power_plant_data['features']:
-                    props = feature.get('properties', {})
-                    name = props.get('name', '')
+            rows = await db_manager.fetch_all(
+                """
+                SELECT id, name, type, latitude, longitude, state, capacity
+                FROM industries
+                WHERE LOWER(name) LIKE :pattern OR LOWER(state) LIKE :pattern
+                ORDER BY CASE WHEN LOWER(name) LIKE :prefix THEN 0 ELSE 1 END, name ASC
+                LIMIT :limit
+                """,
+                {"pattern": f"%{query_lower}%", "prefix": f"{query_lower}%", "limit": limit}
+            )
+            for row in rows:
+                results.append({
+                    'id': row['id'],
+                    'name': row['name'],
+                    'type': row.get('type', 'Power Plant'),
+                    'category': 'power-plant' if 'power' in str(row.get('type', '')).lower() or row.get('type') in ('Coal', 'Gas', 'Hydro', 'Solar', 'Wind', 'Biomass', 'Nuclear') else 'industry',
+                    'latitude': float(row['latitude']),
+                    'longitude': float(row['longitude']),
+                    'capacity_mw': row.get('capacity'),
+                    'state': row.get('state'),
+                    'details': dict(row)
+                })
+        except Exception as db_err:
+            logger_err = f"DB search failed, using GPPD: {db_err}"
+
+        # 2. Fallback to GPPD in-memory list if SQLite returned nothing
+        if not results:
+            try:
+                plants_gppd = global_power_plant_loader.load_india_power_plants()
+                for plant in plants_gppd:
+                    name = plant.get('name', '')
                     if query_lower in name.lower():
-                        coords = feature.get('geometry', {}).get('coordinates', [0, 0])
                         results.append({
+                            'id': plant.get('gppd_idnr') or name,
                             'name': name,
-                            'type': 'Power Plant',
+                            'type': plant.get('primary_fuel', 'Power Plant'),
                             'category': 'power-plant',
-                            'latitude': coords[1],
-                            'longitude': coords[0],
-                            'capacity_mw': props.get('capacity_mw'),
-                            'fuel_type': props.get('fuel_type'),
-                            'details': props
+                            'latitude': float(plant.get('latitude', 0)),
+                            'longitude': float(plant.get('longitude', 0)),
+                            'capacity_mw': plant.get('capacity_mw'),
+                            'state': plant.get('state'),
+                            'details': plant
                         })
-        except Exception as e:
-            print(f"Error searching power plants: {e}")
-
-        # Search industries
-        try:
-            industry_data = await industry_overlay.get_industry_overlay()
-            if industry_data and 'features' in industry_data:
-                for feature in industry_data['features']:
-                    props = feature.get('properties', {})
-                    name = props.get('name', '')
-                    if query_lower in name.lower():
-                        coords = feature.get('geometry', {}).get('coordinates', [0, 0])
-                        results.append({
-                            'name': name,
-                            'type': 'Industry',
-                            'category': 'industry',
-                            'latitude': coords[1],
-                            'longitude': coords[0],
-                            'industry_type': props.get('industry_type'),
-                            'details': props
-                        })
-        except Exception as e:
-            print(f"Error searching industries: {e}")
-
-        # Search refineries
-        try:
-            refinery_data = await refineries.get_refineries()
-            if refinery_data and 'features' in refinery_data:
-                for feature in refinery_data['features']:
-                    props = feature.get('properties', {})
-                    name = props.get('name', '')
-                    if query_lower in name.lower():
-                        coords = feature.get('geometry', {}).get('coordinates', [0, 0])
-                        results.append({
-                            'name': name,
-                            'type': 'Refinery',
-                            'category': 'refinery',
-                            'latitude': coords[1],
-                            'longitude': coords[0],
-                            'capacity': props.get('capacity'),
-                            'details': props
-                        })
-        except Exception as e:
-            print(f"Error searching refineries: {e}")
-
-        # Sort by relevance (exact matches first, then partial)
-        results.sort(key=lambda x: (
-            not x['name'].lower().startswith(query_lower),
-            x['name'].lower()
-        ))
-
-        # Limit results
-        results = results[:limit]
+                        if len(results) >= limit:
+                            break
+            except Exception as gppd_err:
+                pass
 
         return {
             'query': search_term,

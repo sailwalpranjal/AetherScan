@@ -7,15 +7,18 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+from services.data_sync import get_cached_layer, set_cached_layer
+from db.database import db_manager
+
+
 async def get_crop_burning_fires(days: int = 5) -> Dict:
     """Get recent crop burning fire detections from real NASA FIRMS data."""
     source = 'NASA FIRMS'
     features = []
-    effective_days = max(1, min(int(days), 5))
+    effective_days = max(1, min(int(days), 7))
 
     try:
         fires = await nasa_firms_loader.fetch_active_fires(days=effective_days)
-
         for fire in fires:
             features.append({
                 'type': 'Feature',
@@ -32,27 +35,23 @@ async def get_crop_burning_fires(days: int = 5) -> Dict:
                     'satellite': fire['satellite']
                 }
             })
-
     except Exception as e:
-        logger.error(f"NASA FIRMS API error: {e}")
+        logger.error(f"NASA FIRMS layer error: {e}")
 
-    # Zero-Fake-Data Invariant: If no fires from API, return empty collection cleanly
     if not features:
         source = 'None'
-
-    logger.info(f"Returning {len(features)} crop burning fire points from {source}")
 
     return {
         'type': 'FeatureCollection',
         'features': features,
         'count': len(features),
-        'days': days,
+        'days': effective_days,
         'source': source
     }
 
 
 async def get_fire_density(date_from: Optional[str] = None, date_to: Optional[str] = None) -> Dict:
-    """Get fire density as GeoJSON FeatureCollection (compatible with frontend)"""
+    """Get fire density as GeoJSON FeatureCollection."""
     if not date_from:
         date_from = (datetime.utcnow() - timedelta(days=30)).strftime('%Y-%m-%d')
     if not date_to:
@@ -64,7 +63,6 @@ async def get_fire_density(date_from: Optional[str] = None, date_to: Optional[st
     try:
         density_data = await nasa_firms_loader.get_fire_density_grid(date_from, date_to)
 
-        # Convert grid format to GeoJSON FeatureCollection
         if density_data and density_data.get('lats') and density_data.get('lons') and density_data.get('counts'):
             lats = density_data['lats']
             lons = density_data['lons']
@@ -87,7 +85,6 @@ async def get_fire_density(date_from: Optional[str] = None, date_to: Optional[st
                                     'source': 'NASA FIRMS'
                                 }
                             })
-
     except Exception as e:
         logger.error(f"Fire density calculation failed: {e}")
 

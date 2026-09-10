@@ -41,6 +41,12 @@ async def lifespan(app: FastAPI):
     await db_manager.seed_industries_if_needed()
     print("\n[OK] Database initialized")
 
+    # Schedule non-blocking environmental dataset synchronization
+    import asyncio
+    from services.data_sync import data_sync_service
+    asyncio.create_task(data_sync_service.run_full_sync())
+    print("[OK] Asynchronous environmental data synchronization scheduled")
+
     # Initialize AQICN service
     if settings.AQICN_API_TOKEN:
         initialize_aqicn_service(settings.AQICN_API_TOKEN)

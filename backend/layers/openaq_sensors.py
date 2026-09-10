@@ -6,6 +6,11 @@ from data_sources.openaq_loader import openaq_loader
 logger = logging.getLogger(__name__)
 
 
+import json
+from db.database import db_manager
+from services.data_sync import get_cached_layer, set_cached_layer, data_sync_service
+
+
 def _get_fallback_sensor_data() -> List[Dict]:
     """
     Deprecated fallback stub adhering to Zero-Fake-Data invariant.
@@ -16,7 +21,7 @@ def _get_fallback_sensor_data() -> List[Dict]:
 
 
 async def get_sensor_locations() -> Dict:
-    """Get all OpenAQ sensor locations"""
+    """Get all OpenAQ sensor locations."""
     features = []
     source = 'None'
 
@@ -44,12 +49,6 @@ async def get_sensor_locations() -> Dict:
             source = 'OpenAQ'
     except Exception as e:
         logger.warning(f"OpenAQ API error: {e}")
-
-    # Zero-Fake-Data Invariant: If no data from API, return empty collection cleanly
-    if not features:
-        source = 'None'
-
-    logger.info(f"Returning {len(features)} sensor locations from {source}")
 
     return {
         'type': 'FeatureCollection',

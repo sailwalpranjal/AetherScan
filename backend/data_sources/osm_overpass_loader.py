@@ -293,7 +293,13 @@ class OSMOverpassLoader:
         out center;
         """
 
-        data = await self.query_overpass(query)
+        if hasattr(self, '_refineries_cache') and self._refineries_cache:
+            return self._refineries_cache
+
+        try:
+            data = await asyncio.wait_for(self.query_overpass(query), timeout=3.0)
+        except Exception:
+            data = None
 
         if not data or 'elements' not in data:
             return []

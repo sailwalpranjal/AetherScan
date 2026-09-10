@@ -715,6 +715,36 @@ class OpenAQProvider(BaseProvider):
             extra_kwargs["coordinates"] = f"{coordinates[0]},{coordinates[1]}"
             extra_kwargs["radius"] = radius
 
+        try:
+            from db.database import db_manager
+            await db_manager.initialize()
+            rows = await db_manager.fetch_all(
+                "SELECT station_id, name, latitude, longitude, city, country, last_updated, parameters FROM openaq_stations WHERE latitude IS NOT NULL AND longitude IS NOT NULL LIMIT ?",
+                (limit,)
+            )
+            if rows and len(rows) > 0 and not coordinates and not bbox:
+                stations = []
+                import json
+                for r in rows:
+                    p = []
+                    if r.get("parameters"):
+                        try:
+                            p = json.loads(r["parameters"]) if isinstance(r["parameters"], str) else r["parameters"]
+                        except Exception:
+                            p = []
+                    stations.append({
+                        "station_id": r.get("station_id", ""),
+                        "name": r.get("name", "Unknown"),
+                        "latitude": float(r["latitude"]),
+                        "longitude": float(r["longitude"]),
+                        "city": r.get("city", ""),
+                        "country": r.get("country", "IN"),
+                        "parameters": p,
+                    })
+                return stations
+        except Exception:
+            pass
+
         raw_stations = await self.fetch_data(
             endpoint="locations",
             countries_id=9,
@@ -737,6 +767,42 @@ class OpenAQProvider(BaseProvider):
             entry = self._cache[cache_key]
             if (time.monotonic() - entry["time"]) < self._cache_ttl:
                 return entry["data"]
+
+        # Check SQLite database for persisted observations
+        try:
+            from db.database import db_manager
+            await db_manager.initialize()
+            rows = await db_manager.fetch_all(
+                """
+                SELECT s.city, s.name, s.latitude, s.longitude, m.parameter, m.value, m.unit, m.timestamp
+                FROM openaq_measurements m
+                JOIN openaq_stations s ON m.station_id = s.station_id
+                WHERE m.value >= 0
+                LIMIT ?
+                """,
+                (limit,)
+            )
+            if rows and len(rows) > 0:
+                meas = [
+                    {
+                        "city": r.get("city") or r.get("name") or "",
+                        "location": r.get("name") or "",
+                        "latitude": r.get("latitude"),
+                        "longitude": r.get("longitude"),
+                        "parameter": r.get("parameter"),
+                        "value": r.get("value"),
+                        "unit": r.get("unit"),
+                        "timestamp": r.get("timestamp"),
+                    }
+                    for r in rows
+                ]
+                self._cache[cache_key] = {
+                    "data": meas,
+                    "time": time.monotonic(),
+                }
+                return meas
+        except Exception as db_exc:
+            self.logger.debug(f"[OpenAQ] DB query fallback error: {db_exc}")
 
         raw_data = await self.fetch_data(
             endpoint="locations",

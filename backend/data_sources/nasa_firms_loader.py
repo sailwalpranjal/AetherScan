@@ -612,6 +612,22 @@ class NASAFIRMSProvider(BaseProvider):
         """
         Legacy shim: Fetch active fire detections and return normalized list of dicts.
         """
+        if db_manager is not None:
+            try:
+                await db_manager.initialize()
+                rows = await db_manager.fetch_all(
+                    """
+                    SELECT latitude, longitude, brightness, scan, track, acq_date, acq_time, satellite, confidence, frp
+                    FROM nasa_firms_fires
+                    ORDER BY acq_date DESC, acq_time DESC
+                    LIMIT 5000
+                    """
+                )
+                if rows and len(rows) > 0:
+                    return [dict(r) for r in rows]
+            except Exception:
+                pass
+
         raw = await self.fetch_data(source=source, days=days, area=bbox)
         return await self.process_data(raw)
 
@@ -794,29 +810,36 @@ class NASAFIRMSProvider(BaseProvider):
         if session is not None:
             await self.save_data(fires, session)
         elif db_manager is not None:
-            for fire in fires:
+            await db_manager.initialize()
+            rows = [
+                (
+                    f["latitude"],
+                    f["longitude"],
+                    f.get("brightness", 0),
+                    f.get("scan", 0),
+                    f.get("track", 0),
+                    f.get("acq_date", ""),
+                    f.get("acq_time", ""),
+                    f.get("satellite", ""),
+                    f.get("confidence", "nominal"),
+                    f.get("frp", 0),
+                )
+                for f in fires
+                if f.get("latitude") is not None and f.get("longitude") is not None
+            ]
+            if rows and db_manager._db:
                 try:
-                    await db_manager.execute(
+                    await db_manager._db.executemany(
                         """
                         INSERT INTO nasa_firms_fires
                         (latitude, longitude, brightness, scan, track, acq_date, acq_time, satellite, confidence, frp)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
-                        (
-                            fire["latitude"],
-                            fire["longitude"],
-                            fire.get("brightness", 0),
-                            fire.get("scan", 0),
-                            fire.get("track", 0),
-                            fire.get("acq_date", ""),
-                            fire.get("acq_time", ""),
-                            fire.get("satellite", ""),
-                            fire.get("confidence", "nominal"),
-                            fire.get("frp", 0),
-                        ),
+                        rows,
                     )
+                    await db_manager._db.commit()
                 except Exception as e:
-                    self.logger.warning(f"[NASA FIRMS] db_manager execute failed: {e}")
+                    self.logger.warning(f"[NASA FIRMS] Batch insert failed: {e}")
 
 
 # =============================================================================

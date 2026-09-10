@@ -109,18 +109,24 @@ class DatabaseManager:
 
     async def initialize(self, db_path: Optional[str] = None):
         """Initialize database connection and ensure all tables exist."""
-        if self._db is None:
-            self._db_path = db_path or str(Path(settings.DATABASE_PATH).resolve())
+        target_path = db_path or str(Path(settings.DATABASE_PATH).resolve())
+        if self._db is None or target_path != self._db_path:
+            if self._db is not None:
+                await self._db.close()
+                self._db = None
+
+            self._db_path = target_path
             if str(self._db_path) != ":memory:":
                 Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
 
             self._db = await aiosqlite.connect(self._db_path)
             self._db.row_factory = aiosqlite.Row
 
-            if str(self._db_path) == ":memory:":
-                await self._create_tables()
-            else:
-                await init_db()
+            if str(self._db_path) != ":memory:":
+                await self._db.execute("PRAGMA journal_mode=WAL;")
+                await self._db.execute("PRAGMA busy_timeout=5000;")
+
+            await self._create_tables()
 
     async def _create_tables(self):
         """Create standard tables for in-memory or raw SQLite instances."""
@@ -280,6 +286,7 @@ class DatabaseManager:
         if self._db:
             await self._db.close()
             self._db = None
+            self._db_path = None
 
 
 db_manager = DatabaseManager()
