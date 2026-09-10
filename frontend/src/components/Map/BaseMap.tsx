@@ -37,64 +37,90 @@ interface BaseMapProps {
   viewState?: { latitude: number; longitude: number; zoom: number }
   onViewStateChange?: (viewState: { latitude: number; longitude: number; zoom: number }) => void
   onClick?: (lat: number, lon: number) => void
+  selectedIndustry?: any | null
+  onSelectIndustry?: (industry: any | null) => void
 }
 
 // 100% Free Basemap Styles (No API Keys Required!)
 const FREE_BASEMAP_STYLES = [
   {
-    id: 'carto-dark',
-    name: 'Carto Dark',
+    id: 'esri-dark',
+    name: 'Dark Gray',
     style: {
       version: 8,
       glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
       sources: {
-        'carto-dark': {
+        'esri-dark-base': {
           type: 'raster',
           tiles: [
-            'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-            'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-            'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+            'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
           ],
           tileSize: 256,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+        },
+        'esri-dark-ref': {
+          type: 'raster',
+          tiles: [
+            'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+          ],
+          tileSize: 256,
         },
       },
       layers: [
         {
-          id: 'carto-dark-layer',
+          id: 'esri-dark-base-layer',
           type: 'raster',
-          source: 'carto-dark',
+          source: 'esri-dark-base',
           minzoom: 0,
-          maxzoom: 22,
+          maxzoom: 16,
+        },
+        {
+          id: 'esri-dark-ref-layer',
+          type: 'raster',
+          source: 'esri-dark-ref',
+          minzoom: 0,
+          maxzoom: 16,
         },
       ],
     },
   },
   {
-    id: 'carto-light',
-    name: 'Carto Light',
+    id: 'esri-light',
+    name: 'Light Gray',
     style: {
       version: 8,
       glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
       sources: {
-        'carto-light': {
+        'esri-light-base': {
           type: 'raster',
           tiles: [
-            'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-            'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-            'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+            'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
           ],
           tileSize: 256,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+        },
+        'esri-light-ref': {
+          type: 'raster',
+          tiles: [
+            'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+          ],
+          tileSize: 256,
         },
       },
       layers: [
         {
-          id: 'carto-light-layer',
+          id: 'esri-light-base-layer',
           type: 'raster',
-          source: 'carto-light',
+          source: 'esri-light-base',
           minzoom: 0,
-          maxzoom: 22,
+          maxzoom: 16,
+        },
+        {
+          id: 'esri-light-ref-layer',
+          type: 'raster',
+          source: 'esri-light-ref',
+          minzoom: 0,
+          maxzoom: 16,
         },
       ],
     },
@@ -201,8 +227,7 @@ const FREE_BASEMAP_STYLES = [
         'labels': {
           type: 'raster',
           tiles: [
-            'https://a.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png',
-            'https://b.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png',
+            'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
           ],
           tileSize: 256,
         },
@@ -233,7 +258,9 @@ export default function BaseMap({
   timeRange,
   viewState: externalViewState,
   onViewStateChange,
-  onClick
+  onClick,
+  selectedIndustry: externalSelectedIndustry,
+  onSelectIndustry
 }: BaseMapProps) {
   const [internalViewState, setInternalViewState] = useState<MapViewState>({
     longitude: 78.9629,
@@ -255,7 +282,12 @@ export default function BaseMap({
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const [clickedPoint, setClickedPoint] = useState<{ lat: number; lon: number } | null>(null)
   const [aqiData, setAqiData] = useState<AQIResult | null>(null)
-  const [selectedIndustry, setSelectedIndustry] = useState<any | null>(null)
+  const [internalSelectedIndustry, setInternalSelectedIndustry] = useState<any | null>(null)
+  const selectedIndustry = externalSelectedIndustry !== undefined ? externalSelectedIndustry : internalSelectedIndustry
+  const setSelectedIndustry = useCallback((ind: any | null) => {
+    setInternalSelectedIndustry(ind)
+    if (onSelectIndustry) onSelectIndustry(ind)
+  }, [onSelectIndustry])
   const [loading, setLoading] = useState(false)
   const [isOutsideIndia, setIsOutsideIndia] = useState(false)
 

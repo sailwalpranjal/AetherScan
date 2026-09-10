@@ -78,10 +78,10 @@ export default function Home() {
     end: new Date().toISOString().split('T')[0],
   })
 
-  // Collapsible panels state - all collapsed by default
+  // Collapsible panels state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [layerPanelOpen, setLayerPanelOpen] = useState(false)
-  const [searchPanelOpen, setSearchPanelOpen] = useState(false)
+  const [searchPanelOpen, setSearchPanelOpen] = useState(true)
   const [legendOpen, setLegendOpen] = useState(false)
   const [timeSliderOpen, setTimeSliderOpen] = useState(false)
 
@@ -173,6 +173,7 @@ export default function Home() {
     zoom: 4.5
   })
   const [selectedLocation, setSelectedLocation] = useState<AQIData | null>(null)
+  const [selectedIndustry, setSelectedIndustry] = useState<any | null>(null)
   const [comparisonOpen, setComparisonOpen] = useState(false)
   const [comparisonInitialLocation, setComparisonInitialLocation] = useState<{ lat: number; lon: number; name: string } | undefined>(undefined)
   const [bookmarksOpen, setBookmarksOpen] = useState(false)
@@ -191,12 +192,27 @@ export default function Home() {
     setLayerOpacity((prev) => ({ ...prev, [layerId]: opacity }))
   }
 
-  const handleLocationSelect = useCallback(async (lat: number, lon: number, name: string) => {
+  const handleLocationSelect = useCallback(async (lat: number, lon: number, name: string, item?: any) => {
     setViewState({
       latitude: lat,
       longitude: lon,
-      zoom: 10
+      zoom: item?.category === 'power-plant' || item?.category === 'industry' ? 12 : 10
     })
+
+    if (item && (item.category === 'power-plant' || item.category === 'industry' || item.category === 'refinery' || item.capacity_mw)) {
+      setSelectedIndustry({
+        id: item.id || name,
+        name: item.name || name,
+        type: item.type || 'Power Plant',
+        capacity_mw: item.capacity_mw,
+        latitude: lat,
+        longitude: lon,
+        state: item.state,
+        ...(item.details || {})
+      })
+    } else {
+      setSelectedIndustry(null)
+    }
 
     // Fetch AQI for location
     try {
@@ -326,13 +342,15 @@ export default function Home() {
           viewState={viewState}
           onViewStateChange={setViewState}
           onClick={handleMapClick}
+          selectedIndustry={selectedIndustry}
+          onSelectIndustry={setSelectedIndustry}
         />
       </div>
 
       {/* Left Panel - Collapsible Search & Tools */}
       <div className="absolute top-20 sm:top-24 left-2 sm:left-4 z-40 w-[calc(100%-1rem)] sm:w-auto sm:max-w-md">
-        {/* Toggle Buttons Row - Mobile */}
-        <div className="flex flex-wrap gap-2 mb-2 sm:hidden">
+        {/* Toggle Buttons Row */}
+        <div className="flex flex-wrap gap-2 mb-2">
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
               variant={searchPanelOpen ? "default" : "neon"}

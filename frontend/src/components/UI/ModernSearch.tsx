@@ -22,7 +22,7 @@ interface SearchResult {
 }
 
 interface ModernSearchProps {
-  onLocationSelect: (lat: number, lon: number, name: string) => void
+  onLocationSelect: (lat: number, lon: number, name: string, item?: SearchResult) => void
 }
 
 export default function ModernSearch({ onLocationSelect }: ModernSearchProps) {
@@ -91,7 +91,7 @@ export default function ModernSearch({ onLocationSelect }: ModernSearchProps) {
   }, [query])
 
   const handleSelect = (result: SearchResult) => {
-    onLocationSelect(result.latitude, result.longitude, result.name)
+    onLocationSelect(result.latitude, result.longitude, result.name, result)
     setQuery(result.city || result.state || result.name.split(',')[0])
     setShowResults(false)
     setFocused(false)
