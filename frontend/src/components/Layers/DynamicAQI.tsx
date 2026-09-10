@@ -75,39 +75,41 @@ export default function DynamicAQI({ data, opacity }: Props) {
             300, 0.95,    // Very Unhealthy
             500, 1        // Hazardous
           ],
-          // Intensity increases with zoom for better visibility
+          // Intensity scaled smoothly with zoom
           'heatmap-intensity': [
             'interpolate',
             ['linear'],
             ['zoom'],
-            0, 1,
-            4, 1.5,
-            9, 2.5
+            0, 0.7,
+            4, 1.1,
+            8, 1.8,
+            12, 2.4
           ],
-          // EPA AQI Standard Color Scale
+          // EPA AQI Standard Color Scale with subtle transitions
           'heatmap-color': [
             'interpolate',
             ['linear'],
             ['heatmap-density'],
-            0, 'rgba(0,0,0,0)',        // Transparent
-            0.1, '#00E400',             // Good (0-50) - Green
-            0.2, '#92D050',             // Good-Moderate transition
-            0.3, '#FFFF00',             // Moderate (51-100) - Yellow
-            0.5, '#FF7E00',             // Unhealthy for Sensitive (101-150) - Orange
-            0.7, '#FF0000',             // Unhealthy (151-200) - Red
-            0.85, '#8F3F97',            // Very Unhealthy (201-300) - Purple
-            1, '#7E0023'                // Hazardous (301+) - Maroon
+            0, 'rgba(0,0,0,0)',
+            0.15, 'rgba(16, 185, 129, 0.6)',  // Emerald Green
+            0.35, 'rgba(234, 179, 8, 0.75)',  // Yellow
+            0.55, 'rgba(249, 115, 22, 0.85)', // Orange
+            0.75, 'rgba(239, 68, 68, 0.9)',   // Red
+            0.9, 'rgba(168, 85, 247, 0.95)',  // Purple
+            1.0, '#7E0023'                    // Maroon
           ],
-          // Radius increases with zoom for smooth coverage
+          // Smooth, non-bloated heatmap radius
           'heatmap-radius': [
             'interpolate',
             ['linear'],
             ['zoom'],
-            0, 60,
-            4, 80,
-            9, 140
+            0, 10,
+            4, 20,
+            7, 36,
+            10, 65,
+            13, 95
           ],
-          'heatmap-opacity': opacity * 0.9,
+          'heatmap-opacity': opacity * 0.78,
         }}
       />
     </Source>

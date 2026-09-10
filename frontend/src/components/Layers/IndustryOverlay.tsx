@@ -33,32 +33,96 @@ export default function IndustryOverlay({ data, opacity }: Props) {
   if (!geojson || !geojson.features || geojson.features.length === 0) return null
 
   return (
-    <Source id="industries" type="geojson" data={geojson}>
+    <Source
+      id="industries"
+      type="geojson"
+      data={geojson}
+      cluster={true}
+      clusterMaxZoom={8}
+      clusterRadius={45}
+    >
+      {/* Clustered circles */}
       <Layer
-        id="industries-layer"
+        id="industries-clusters"
         type="circle"
+        filter={['has', 'point_count']}
         paint={{
-          'circle-radius': 8,
-          'circle-color': '#FF6B6B',
-          'circle-opacity': opacity,
+          'circle-color': [
+            'step',
+            ['get', 'point_count'],
+            '#F97316',
+            10,
+            '#EA580C',
+            50,
+            '#C2410C',
+          ],
+          'circle-radius': [
+            'step',
+            ['get', 'point_count'],
+            13,
+            10,
+            17,
+            50,
+            22,
+          ],
+          'circle-opacity': opacity * 0.9,
           'circle-stroke-width': 2,
-          'circle-stroke-color': '#ffffff',
+          'circle-stroke-color': '#FFFFFF',
+          'circle-stroke-opacity': opacity * 0.85,
         }}
       />
+      {/* Cluster count text */}
       <Layer
-        id="industries-labels"
+        id="industries-cluster-count"
         type="symbol"
+        filter={['has', 'point_count']}
         layout={{
-          'text-field': ['get', 'name'],
+          'text-field': '{point_count_abbreviated}',
           'text-size': 10,
-          'text-offset': [0, 1.5],
-          'text-anchor': 'top',
         }}
         paint={{
           'text-color': '#ffffff',
-          'text-halo-color': '#000000',
-          'text-halo-width': 1,
-          'text-opacity': opacity,
+        }}
+      />
+      {/* Unclustered individual points */}
+      <Layer
+        id="industries-unclustered"
+        type="circle"
+        filter={['!', ['has', 'point_count']]}
+        paint={{
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            4, 3.5,
+            7, 5,
+            10, 7
+          ],
+          'circle-color': '#F97316',
+          'circle-opacity': opacity * 0.9,
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': '#FFFFFF',
+          'circle-stroke-opacity': opacity * 0.95,
+        }}
+      />
+      {/* Individual labels ONLY when zoomed in (minzoom=9) */}
+      <Layer
+        id="industries-labels"
+        type="symbol"
+        filter={['!', ['has', 'point_count']]}
+        minzoom={9}
+        layout={{
+          'text-field': ['get', 'name'],
+          'text-size': 10,
+          'text-offset': [0, 1.3],
+          'text-anchor': 'top',
+          'text-allow-overlap': false,
+        }}
+        paint={{
+          'text-color': '#ffffff',
+          'text-halo-color': 'rgba(15, 23, 42, 0.95)',
+          'text-halo-width': 1.5,
+          'text-opacity': opacity * 0.9,
         }}
       />
     </Source>

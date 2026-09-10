@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     MAPBOX_TOKEN: str = ""
 
     # Database
-    DATABASE_PATH: str = "/tmp/aetherscan.db" if os.environ.get("VERCEL") or os.environ.get("RENDER") else "./cache/aetherscan.db"
+    DATABASE_PATH: str = "/tmp/aetherscan.db" if os.environ.get("VERCEL") or os.environ.get("RENDER") else str(Path(__file__).parent.parent / "cache" / "aetherscan.db")
 
     # Cache
     TILE_CACHE_DIR: str = "/tmp/tiles" if os.environ.get("VERCEL") or os.environ.get("RENDER") else "./cache/tiles"
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     MIN_ZOOM: int = 4
 
     class Config:
-        env_file = ".env"
+        env_file = (str(Path(__file__).parent.parent / ".env"), ".env")
         case_sensitive = True
         extra = "ignore"
 

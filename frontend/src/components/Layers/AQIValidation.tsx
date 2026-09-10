@@ -57,16 +57,109 @@ export default function AQIValidation({ data, opacity }: Props) {
   if (!geojson || !geojson.features || geojson.features.length === 0) return null
 
   return (
-    <Source id="aqi-validation" type="geojson" data={geojson}>
+    <Source
+      id="aqi-validation"
+      type="geojson"
+      data={geojson}
+      cluster={true}
+      clusterMaxZoom={8}
+      clusterRadius={40}
+    >
+      {/* Clustered validation points */}
       <Layer
-        id="aqi-validation-layer"
+        id="aqi-val-clusters"
         type="circle"
+        filter={['has', 'point_count']}
         paint={{
-          'circle-radius': 8,
-          'circle-color': '#9B59B6',
-          'circle-opacity': opacity,
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#E74C3C',
+          'circle-color': '#8B5CF6',
+          'circle-radius': [
+            'step',
+            ['get', 'point_count'],
+            12,
+            10,
+            16,
+            50,
+            20,
+          ],
+          'circle-opacity': opacity * 0.9,
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': '#FFFFFF',
+          'circle-stroke-opacity': opacity * 0.8,
+        }}
+      />
+      <Layer
+        id="aqi-val-cluster-count"
+        type="symbol"
+        filter={['has', 'point_count']}
+        layout={{
+          'text-field': '{point_count_abbreviated}',
+          'text-size': 10,
+        }}
+        paint={{
+          'text-color': '#ffffff',
+        }}
+      />
+      {/* Individual correlation halo */}
+      <Layer
+        id="aqi-val-unclustered-halo"
+        type="circle"
+        filter={['!', ['has', 'point_count']]}
+        paint={{
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            4, 6,
+            8, 10,
+            12, 14
+          ],
+          'circle-color': '#8B5CF6',
+          'circle-opacity': opacity * 0.25,
+        }}
+      />
+      {/* Individual core node */}
+      <Layer
+        id="aqi-val-unclustered-core"
+        type="circle"
+        filter={['!', ['has', 'point_count']]}
+        paint={{
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            4, 3.5,
+            8, 5,
+            12, 6.5
+          ],
+          'circle-color': '#A855F7',
+          'circle-opacity': opacity * 0.95,
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': '#FFFFFF',
+          'circle-stroke-opacity': opacity,
+        }}
+      />
+      {/* Telemetry text at zoom >= 8 */}
+      <Layer
+        id="aqi-val-labels"
+        type="symbol"
+        filter={['!', ['has', 'point_count']]}
+        minzoom={8}
+        layout={{
+          'text-field': [
+            'concat',
+            ['to-string', ['round', ['get', 'fire_intensity']]],
+            ' MW'
+          ],
+          'text-size': 9,
+          'text-offset': [0, 1.2],
+          'text-anchor': 'top',
+          'text-allow-overlap': false,
+        }}
+        paint={{
+          'text-color': '#E9D5FF',
+          'text-halo-color': 'rgba(15, 23, 42, 0.95)',
+          'text-halo-width': 1.5,
+          'text-opacity': opacity * 0.9,
         }}
       />
     </Source>

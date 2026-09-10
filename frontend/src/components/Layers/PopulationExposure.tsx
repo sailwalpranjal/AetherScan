@@ -40,7 +40,7 @@ export default function PopulationExposure({ data, opacity }: Props) {
 
   return (
     <Source id="population-exposure" type="geojson" data={geojson}>
-      {/* Exposure risk circles with gradient */}
+      {/* Exposure risk circles with refined radius */}
       <Layer
         id="population-exposure-layer"
         type="circle"
@@ -48,73 +48,66 @@ export default function PopulationExposure({ data, opacity }: Props) {
           'circle-radius': [
             'interpolate',
             ['linear'],
-            ['get', 'exposure_risk'],
-            0, 6,
-            100, 8,
-            300, 11,
-            500, 14,
-            700, 17,
-            1000, 22
+            ['zoom'],
+            4, [
+              'interpolate',
+              ['linear'],
+              ['get', 'exposure_risk'],
+              0, 3,
+              50, 4.5,
+              200, 6.5,
+              1000, 9
+            ],
+            8, [
+              'interpolate',
+              ['linear'],
+              ['get', 'exposure_risk'],
+              0, 5,
+              50, 7.5,
+              200, 10,
+              1000, 14
+            ]
           ],
           'circle-color': [
             'interpolate',
             ['linear'],
             ['get', 'exposure_risk'],
-            0, '#00E400',      // Low Risk - Green
-            150, '#92D050',    // Low-Moderate - Light Green
-            300, '#FFFF00',    // Moderate - Yellow
-            500, '#FF7E00',    // High - Orange
-            700, '#FF0000',    // Very High - Red
-            900, '#8F3F97',    // Severe - Purple
+            0, '#10B981',      // Low Risk - Emerald
+            25, '#84CC16',     // Low-Moderate - Lime
+            50, '#EAB308',     // Moderate - Amber
+            100, '#F97316',    // High - Orange
+            200, '#EF4444',    // Very High - Red
+            500, '#A855F7',    // Severe - Purple
             1000, '#7E0023'    // Extreme - Maroon
           ],
-          'circle-opacity': opacity * 0.7,
-          'circle-stroke-width': 2,
+          'circle-opacity': opacity * 0.85,
+          'circle-stroke-width': 1.2,
           'circle-stroke-color': '#ffffff',
           'circle-stroke-opacity': opacity * 0.9,
         }}
       />
-      {/* Location labels */}
+      {/* Location and exposure label ONLY at zoom >= 8 */}
       <Layer
         id="population-exposure-labels"
         type="symbol"
-        layout={{
-          'text-field': ['get', 'location'],
-          'text-size': 11,
-          'text-offset': [0, -1.8],
-          'text-anchor': 'bottom',
-          'text-allow-overlap': false,
-        }}
-        paint={{
-          'text-color': '#ffffff',
-          'text-halo-color': '#000000',
-          'text-halo-width': 2,
-          'text-opacity': opacity,
-        }}
-      />
-      {/* Risk value labels */}
-      <Layer
-        id="population-exposure-values"
-        type="symbol"
-        minzoom={6}
+        minzoom={8}
         layout={{
           'text-field': [
             'concat',
-            'Risk: ',
-            ['to-string', ['round', ['get', 'exposure_risk']]],
-            '\nPM2.5: ',
+            ['get', 'location'],
+            ' • PM₂.₅ ',
             ['to-string', ['round', ['get', 'pm25']]]
           ],
-          'text-size': 9,
-          'text-offset': [0, 2],
+          'text-size': 10,
+          'text-offset': [0, 1.3],
           'text-anchor': 'top',
           'text-allow-overlap': false,
         }}
         paint={{
           'text-color': '#ffffff',
-          'text-halo-color': '#000000',
+          'text-halo-color': 'rgba(15, 23, 42, 0.95)',
           'text-halo-width': 1.5,
-          'text-opacity': opacity * 0.85,
+          'text-opacity': opacity * 0.9,
         }}
       />
     </Source>

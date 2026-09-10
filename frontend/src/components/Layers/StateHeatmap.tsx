@@ -61,65 +61,74 @@ export default function StateHeatmap({ data, opacity }: Props) {
 
   return (
     <Source id="state-heatmap" type="geojson" data={geojson}>
-      {/* Heatmap layer for smooth gradients */}
+      {/* Subtle state ambient glow halo */}
       <Layer
-        id="state-heatmap-base"
-        type="heatmap"
+        id="state-heatmap-glow"
+        type="circle"
         paint={{
-          'heatmap-weight': [
-            'interpolate',
-            ['linear'],
-            ['get', 'aqi'],
-            0, 0,
-            100, 0.5,
-            200, 0.7,
-            300, 0.9,
-            400, 1
-          ],
-          'heatmap-intensity': [
+          'circle-radius': [
             'interpolate',
             ['linear'],
             ['zoom'],
-            0, 1.5,
-            4, 2.5,
-            9, 4
+            3, 12,
+            6, 20,
+            9, 32
           ],
-          'heatmap-color': [
-            'interpolate',
-            ['linear'],
-            ['heatmap-density'],
-            0, 'rgba(0,0,0,0)',
-            0.2, '#00E400',
-            0.4, '#FFFF00',
-            0.6, '#FF7E00',
-            0.8, '#FF0000',
-            1, '#8F3F97'
-          ],
-          'heatmap-radius': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            0, 50,
-            4, 70,
-            9, 120
-          ],
-          'heatmap-opacity': opacity,
+          'circle-color': ['get', 'color'],
+          'circle-opacity': opacity * 0.2,
+          'circle-stroke-width': 1,
+          'circle-stroke-color': ['get', 'color'],
+          'circle-stroke-opacity': opacity * 0.4,
         }}
       />
-      {/* State labels */}
+      {/* Sleek central indicator beacon */}
+      <Layer
+        id="state-heatmap-core"
+        type="circle"
+        paint={{
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            3, 4,
+            6, 6,
+            9, 8
+          ],
+          'circle-color': ['get', 'color'],
+          'circle-opacity': opacity * 0.95,
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-opacity': opacity,
+        }}
+      />
+      {/* State & AQI clean typographic label */}
       <Layer
         id="state-heatmap-labels"
         type="symbol"
         layout={{
-          'text-field': ['get', 'state'],
-          'text-size': 11,
-          'text-anchor': 'center',
+          'text-field': [
+            'concat',
+            ['get', 'state'],
+            ' • ',
+            ['to-string', ['round', ['get', 'aqi']]]
+          ],
+          'text-size': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            3, 9,
+            6, 11,
+            9, 13
+          ],
+          'text-offset': [0, 1.2],
+          'text-anchor': 'top',
+          'text-allow-overlap': false,
         }}
         paint={{
           'text-color': '#ffffff',
-          'text-halo-color': '#000000',
+          'text-halo-color': 'rgba(15, 23, 42, 0.95)',
           'text-halo-width': 1.5,
-          'text-opacity': opacity * 0.8,
+          'text-opacity': opacity * 0.95,
         }}
       />
     </Source>
