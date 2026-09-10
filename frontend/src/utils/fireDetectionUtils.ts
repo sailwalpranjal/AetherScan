@@ -412,6 +412,6 @@ export function createFireTableData(summary: FireSummary): string[][] {
     ['Within 25 km', summary.firesByDistance.within25km.toString(), 'Regional influence'],
     ['Average Fire Radiative Power', `${summary.averageFRP.toFixed(1)} MW`, 'Intensity indicator'],
     ['Maximum FRP', `${summary.maxFRP.toFixed(1)} MW`, 'Peak intensity'],
-    ['Date Range', `${summary.dateRange.from} to ${summary.dateRange.to}`, 'Detection period'],
+    ['Date Range', (summary.dateRange.from && summary.dateRange.to) ? `${summary.dateRange.from} to ${summary.dateRange.to}` : 'Last 7 Days (Near Real-Time)', 'Detection period'],
   ]
 }

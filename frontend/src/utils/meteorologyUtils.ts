@@ -40,15 +40,17 @@ export interface AtmosphericStability {
  */
 export async function fetchMeteorology(lat: number, lon: number): Promise<MeteoData> {
   try {
-    // NASA POWER API endpoint
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - 1) // Yesterday
+    // NASA POWER daily latency is typically 2-3 days.
+    // Query a 10-day window ending 2 days ago to guarantee published records.
     const endDate = new Date()
+    endDate.setDate(endDate.getDate() - 2)
+    const startDate = new Date()
+    startDate.setDate(startDate.getDate() - 10)
 
     const dateFormat = (d: Date) => d.toISOString().split('T')[0].replace(/-/g, '')
 
     const params = new URLSearchParams({
-      parameters: 'T2M,RH2M,PS,WS10M,WD10M', // Temperature, Humidity, Pressure, Wind Speed, Wind Direction
+      parameters: 'T2M,RH2M,PS,WS10M,WD10M',
       community: 'RE',
       longitude: lon.toString(),
       latitude: lat.toString(),
@@ -58,34 +60,39 @@ export async function fetchMeteorology(lat: number, lon: number): Promise<MeteoD
     })
 
     const url = `https://power.larc.nasa.gov/api/temporal/daily/point?${params}`
-
-    console.log('Fetching NASA POWER meteorology data:', url)
     const response = await fetch(url)
 
     if (!response.ok) {
-      console.warn('NASA POWER API failed, using estimated values')
       return getEstimatedMeteorology(lat, lon)
     }
 
     const data = await response.json()
 
-    // Extract latest values
+    // Extract parameters
     const properties = data.properties?.parameter
-    if (!properties) {
-      console.warn('No parameter data in NASA POWER response')
+    if (!properties || !properties.T2M) {
       return getEstimatedMeteorology(lat, lon)
     }
 
-    // Get the latest date's values
-    const dates = Object.keys(properties.T2M || {})
-    const latestDate = dates[dates.length - 1]
+    // Find the latest date with non -999 valid data
+    const dates = Object.keys(properties.T2M).sort().reverse()
+    const validDate = dates.find(d => {
+      const t = properties.T2M?.[d]
+      const ws = properties.WS10M?.[d]
+      return t !== undefined && t !== null && t !== -999 && t !== 999 &&
+             ws !== undefined && ws !== null && ws !== -999 && ws !== 999
+    })
 
-    // Extract raw values
-    const rawTemp = properties.T2M?.[latestDate] ?? 25
-    const rawHumidity = properties.RH2M?.[latestDate] ?? 60
-    const rawPressure = properties.PS?.[latestDate] ?? 1013
-    const rawWindSpeed = properties.WS10M?.[latestDate] ?? 2.5
-    const rawWindDirection = properties.WD10M?.[latestDate] ?? 180
+    if (!validDate) {
+      return getEstimatedMeteorology(lat, lon)
+    }
+
+    // Extract raw values for valid date
+    const rawTemp = properties.T2M[validDate]
+    const rawHumidity = properties.RH2M?.[validDate] ?? 60
+    const rawPressure = properties.PS?.[validDate] ?? 1013
+    const rawWindSpeed = properties.WS10M[validDate]
+    const rawWindDirection = properties.WD10M?.[validDate] ?? 180
 
     // Validate and sanitize NASA POWER data
     const validatedData = validateMeteoData({
@@ -98,9 +105,7 @@ export async function fetchMeteorology(lat: number, lon: number): Promise<MeteoD
       source: 'nasa_power',
     })
 
-    // If validation fails, fall back to estimated
     if (!validatedData.isValid) {
-      console.warn('NASA POWER data validation failed:', validatedData.errors)
       return getEstimatedMeteorology(lat, lon)
     }
 
