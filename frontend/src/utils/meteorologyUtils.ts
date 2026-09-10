@@ -116,7 +116,7 @@ export async function fetchMeteorology(lat: number, lon: number): Promise<MeteoD
  * Get estimated meteorology based on location (fallback)
  */
 function getEstimatedMeteorology(lat: number, lon: number): MeteoData {
-  // Seasonal estimates for India based on location and current month
+  // Deterministic climatological reference for Indian subcontinent based on latitude, month, and hour
   const month = new Date().getMonth() + 1 // 1-12
   const hour = new Date().getHours()
 
@@ -124,57 +124,57 @@ function getEstimatedMeteorology(lat: number, lon: number): MeteoData {
   const isSummer = month >= 3 && month <= 6
   const isMonsoon = month >= 7 && month <= 9
   const isWinter = month >= 11 || month <= 2
-  const isPostMonsoon = month === 10
 
-  // Base values by season
-  let temp = 25
-  let humidity = 60
+  // Latitude adjustment: higher latitudes (North India) have greater seasonal temperature range
+  const latFactor = Math.max(0, Math.min(1, (lat - 10) / 20)) // 0 (South) to 1 (North)
+
+  let temp = 25.0
+  let humidity = 60.0
   let windSpeed = 2.5
-  let windDirection = 270 // Default westerly
+  let windDirection = 270 // Westerly
 
   if (isSummer) {
-    temp = 32 + Math.random() * 6 // 32-38°C
-    humidity = 35 + Math.random() * 15 // 35-50%
-    windSpeed = 2.0 + Math.random() * 2.5 // 2-4.5 m/s
-    windDirection = 280 + Math.random() * 40 // W to NW
+    temp = 32.0 + latFactor * 6.0 // 32-38°C
+    humidity = 45.0 - latFactor * 15.0 // 30-45%
+    windSpeed = 2.8
+    windDirection = 290
   } else if (isMonsoon) {
-    temp = 26 + Math.random() * 4 // 26-30°C
-    humidity = 75 + Math.random() * 15 // 75-90%
-    windSpeed = 3.0 + Math.random() * 3.0 // 3-6 m/s (stronger winds)
-    windDirection = 180 + Math.random() * 60 // S to SW (monsoon winds)
+    temp = 28.0 - latFactor * 2.0 // 26-28°C
+    humidity = 82.0
+    windSpeed = 4.2 // Stronger monsoon winds
+    windDirection = 210 // South-westerly
   } else if (isWinter) {
-    temp = 15 + Math.random() * 8 // 15-23°C
-    humidity = 50 + Math.random() * 15 // 50-65%
-    windSpeed = 1.5 + Math.random() * 1.5 // 1.5-3 m/s (calmer)
-    windDirection = 300 + Math.random() * 60 // NW to N
-  } else if (isPostMonsoon) {
-    temp = 27 + Math.random() * 5 // 27-32°C
-    humidity = 60 + Math.random() * 15 // 60-75%
-    windSpeed = 2.0 + Math.random() * 2.0 // 2-4 m/s
-    windDirection = 270 + Math.random() * 40 // W to NW
+    temp = 24.0 - latFactor * 10.0 // 14-24°C
+    humidity = 55.0
+    windSpeed = 1.8
+    windDirection = 315 // North-westerly
+  } else {
+    // Post-monsoon
+    temp = 28.0 - latFactor * 3.0
+    humidity = 65.0
+    windSpeed = 2.2
+    windDirection = 270
   }
 
-  // Diurnal variation (cooler at night)
-  if (hour >= 18 || hour <= 6) {
-    temp -= 5 + Math.random() * 3 // 5-8°C cooler at night
-    humidity += 10 + Math.random() * 10 // More humid at night
-    windSpeed *= 0.6 // Calmer winds at night
-  }
+  // Diurnal sinusoidal variation (peak at 14:00, coolest at 05:00)
+  const diurnalAngle = ((hour - 5) / 24) * 2 * Math.PI
+  const tempOffset = Math.sin(diurnalAngle) * 4.0 // ±4°C diurnal swing
+  temp += tempOffset
+  humidity -= tempOffset * 2.0 // Inversely proportional to temperature
 
-  // Ensure values are reasonable
-  temp = Math.max(10, Math.min(45, temp))
-  humidity = Math.max(20, Math.min(95, humidity))
-  windSpeed = Math.max(0.5, Math.min(10, windSpeed))
+  temp = Math.max(8, Math.min(48, Math.round(temp * 10) / 10))
+  humidity = Math.max(15, Math.min(98, Math.round(humidity)))
+  windSpeed = Math.max(0.5, Math.min(15, Math.round(windSpeed * 10) / 10))
   windDirection = Math.round(windDirection) % 360
 
-  const estimatedData = {
-    temperature: Math.round(temp * 10) / 10,
-    humidity: Math.round(humidity),
-    pressure: Math.round((1010 + Math.random() * 10) * 10) / 10,
-    windSpeed: Math.round(windSpeed * 10) / 10,
+  const estimatedData: MeteoData = {
+    temperature: temp,
+    humidity,
+    pressure: 1013.2,
+    windSpeed,
     windDirection,
     timestamp: new Date().toISOString(),
-    source: 'estimated' as const,
+    source: 'estimated',
   }
 
   // Validate estimated data

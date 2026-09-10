@@ -66,9 +66,13 @@ backend/cache/data/worldclim/*.tif
 backend/cache/data/census/WPP2024_GEN_F01_DEMOGRAPHIC_INDICATORS_FULL.xlsx
 
 # Generated/cached data
+cache/
 backend/cache/tiles/
-backend/cache/*.db
-backend/*.db
+backend/cache/*.db*
+backend/*.db*
+*.db
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
 
@@ -97,6 +101,8 @@ ehthumbs.db
 Thumbs.db
 desktop.ini
 nul
+.agents/
+ORIGINAL_REQUEST.md
 
 # Temporary files
 *.tmp

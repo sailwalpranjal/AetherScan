@@ -63,33 +63,63 @@ export async function fetchFireData(
   apiKey?: string
 ): Promise<FirePoint[]> {
   try {
-    // NASA FIRMS API endpoint (VIIRS data)
-    // Format: https://firms.modaps.eosdis.nasa.gov/api/area/csv/{apiKey}/VIIRS_NOAA20_NRT/{lat},{lon},{radiusKm}/{daysBack}
-
-    if (!apiKey || apiKey === 'DEMO') {
-      console.warn('NASA FIRMS API key not provided, using representative data')
-      return generateRepresentativeFireData(lat, lon, radiusKm, daysBack)
+    // 1. If explicit NASA FIRMS key provided by user, query NASA FIRMS directly
+    if (apiKey && apiKey !== 'DEMO') {
+      const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${apiKey}/VIIRS_NOAA20_NRT/${lat},${lon},${radiusKm}/${daysBack}`
+      const response = await fetch(url)
+      if (response.ok) {
+        const csvText = await response.text()
+        const fires = parseFireCSV(csvText, lat, lon)
+        return fires.filter(f => f.distance <= radiusKm)
+      }
     }
 
-    const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${apiKey}/VIIRS_NOAA20_NRT/${lat},${lon},${radiusKm}/${daysBack}`
+    // 2. Query AetherScan backend crop-burning layer (backed by real NASA FIRMS SQLite table)
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    const backendUrl = `${apiBase}/layers/crop-burning?days=${Math.min(daysBack, 7)}`
+    const backendRes = await fetch(backendUrl)
+    if (backendRes.ok) {
+      const geojson = await backendRes.json()
+      const features = geojson.features || []
+      const fires: FirePoint[] = []
 
-    console.log('Fetching NASA FIRMS fire data:', url)
-    const response = await fetch(url)
+      for (const feat of features) {
+        const coords = feat.geometry?.coordinates
+        if (!coords || coords.length < 2) continue
+        const fLon = coords[0]
+        const fLat = coords[1]
+        const props = feat.properties || {}
+        const distance = calculateDistance(lat, lon, fLat, fLon)
 
-    if (!response.ok) {
-      console.warn('NASA FIRMS API failed, using representative data')
-      return generateRepresentativeFireData(lat, lon, radiusKm, daysBack)
+        if (distance <= radiusKm) {
+          fires.push({
+            latitude: fLat,
+            longitude: fLon,
+            brightness: props.brightness || 300,
+            scan: 0.375,
+            track: 0.375,
+            acq_date: props.date || '',
+            acq_time: props.time || '',
+            satellite: props.satellite || 'VIIRS',
+            confidence: props.confidence || 'nominal',
+            version: '2.0',
+            bright_t31: props.bright_t31 || 295,
+            frp: props.frp || 0,
+            daynight: 'D',
+            distance,
+          })
+        }
+      }
+      return fires.sort((a, b) => a.distance - b.distance)
     }
 
-    const csvText = await response.text()
-    const fires = parseFireCSV(csvText, lat, lon)
-
-    console.log(`✓ Fetched ${fires.length} fire detections from NASA FIRMS`)
-    return fires
+    // Zero-Fake-Data: Return empty list if no real data available
+    return []
 
   } catch (error) {
-    console.error('NASA FIRMS API error:', error)
-    return generateRepresentativeFireData(lat, lon, radiusKm, daysBack)
+    console.error('Fire data fetch error:', error)
+    // Zero-Fake-Data Invariant: Return empty list on failure
+    return []
   }
 }
 
@@ -111,104 +141,28 @@ function parseFireCSV(csvText: string, facilityLat: number, facilityLon: number)
       fire[header.trim()] = values[idx]?.trim()
     })
 
-    // Calculate distance from facility
-    const distance = calculateDistance(
-      facilityLat,
-      facilityLon,
-      parseFloat(fire.latitude),
-      parseFloat(fire.longitude)
-    )
+    const fLat = parseFloat(fire.latitude)
+    const fLon = parseFloat(fire.longitude)
+    if (isNaN(fLat) || isNaN(fLon)) continue
+
+    const distance = calculateDistance(facilityLat, facilityLon, fLat, fLon)
 
     fires.push({
-      latitude: parseFloat(fire.latitude),
-      longitude: parseFloat(fire.longitude),
-      brightness: parseFloat(fire.brightness),
-      scan: parseFloat(fire.scan),
-      track: parseFloat(fire.track),
-      acq_date: fire.acq_date,
-      acq_time: fire.acq_time,
+      latitude: fLat,
+      longitude: fLon,
+      brightness: parseFloat(fire.brightness) || 300,
+      scan: parseFloat(fire.scan) || 0.375,
+      track: parseFloat(fire.track) || 0.375,
+      acq_date: fire.acq_date || '',
+      acq_time: fire.acq_time || '',
       satellite: fire.satellite === 'N' ? 'VIIRS' : 'MODIS',
-      confidence: fire.confidence,
-      version: fire.version,
-      bright_t31: parseFloat(fire.bright_t31),
-      frp: parseFloat(fire.frp),
-      daynight: fire.daynight,
+      confidence: fire.confidence || 'nominal',
+      version: fire.version || '2.0',
+      bright_t31: parseFloat(fire.bright_t31) || 295,
+      frp: parseFloat(fire.frp) || 0,
+      daynight: fire.daynight || 'D',
       distance,
     })
-  }
-
-  return fires.sort((a, b) => a.distance - b.distance)
-}
-
-/**
- * Generate representative fire data (fallback when API unavailable)
- */
-function generateRepresentativeFireData(
-  facilityLat: number,
-  facilityLon: number,
-  radiusKm: number,
-  daysBack: number
-): FirePoint[] {
-  // For India, agricultural burning is seasonal (Oct-Nov, Apr-May)
-  const month = new Date().getMonth() + 1
-  const isBurningSeason = (month >= 4 && month <= 5) || (month >= 10 && month <= 11)
-
-  if (!isBurningSeason) {
-    // Low fire activity outside burning season
-    return generateRandomFires(facilityLat, facilityLon, radiusKm, 2, 8)
-  } else {
-    // High fire activity during burning season
-    return generateRandomFires(facilityLat, facilityLon, radiusKm, 15, 35)
-  }
-}
-
-/**
- * Generate random fire points for testing/demo
- */
-function generateRandomFires(
-  centerLat: number,
-  centerLon: number,
-  radiusKm: number,
-  minFires: number,
-  maxFires: number
-): FirePoint[] {
-  const fireCount = Math.floor(Math.random() * (maxFires - minFires + 1)) + minFires
-  const fires: FirePoint[] = []
-
-  for (let i = 0; i < fireCount; i++) {
-    // Random point within radius
-    const angle = Math.random() * 2 * Math.PI
-    const distance = Math.random() * radiusKm
-
-    const lat = centerLat + (distance / 111.32) * Math.cos(angle) // 1 degree ≈ 111.32 km
-    const lon = centerLon + (distance / (111.32 * Math.cos(centerLat * Math.PI / 180))) * Math.sin(angle)
-
-    const daysAgo = Math.floor(Math.random() * 7)
-    const date = new Date()
-    date.setDate(date.getDate() - daysAgo)
-
-    const fire: FirePoint = {
-      latitude: lat,
-      longitude: lon,
-      brightness: 320 + Math.random() * 30, // 320-350K (realistic for fires)
-      scan: 0.375,
-      track: 0.375,
-      acq_date: date.toISOString().split('T')[0],
-      acq_time: String(Math.floor(Math.random() * 2400)).padStart(4, '0'),
-      satellite: Math.random() > 0.5 ? 'VIIRS' : 'MODIS',
-      confidence: ['high', 'nominal', 'low'][Math.floor(Math.random() * 3)] as any,
-      version: '2.0',
-      bright_t31: 295 + Math.random() * 15, // 295-310K (background temperature)
-      frp: 5 + Math.random() * 45, // 5-50 MW (realistic for agricultural fires)
-      daynight: Math.random() > 0.3 ? 'D' : 'N',
-      distance,
-    }
-
-    // Validate the fire point
-    const validated = validateFirePoint(fire)
-    if (validated.isValid) {
-      fires.push(fire)
-    }
   }
 
   return fires.sort((a, b) => a.distance - b.distance)
