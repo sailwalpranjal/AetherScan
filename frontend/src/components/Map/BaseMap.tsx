@@ -252,6 +252,17 @@ const FREE_BASEMAP_STYLES = [
   },
 ]
 
+const CLUSTER_LAYERS = ['power-plants-clusters', 'industries-clusters']
+const INDIVIDUAL_INDUSTRIAL_LAYERS = [
+  'power-plants-unclustered',
+  'industries-unclustered',
+  'industries-layer',
+  'power-plants-layer',
+  'refineries-layer',
+  'refineries-labels',
+]
+const INTERACTIVE_LAYERS = [...CLUSTER_LAYERS, ...INDIVIDUAL_INDUSTRIAL_LAYERS]
+
 export default function BaseMap({
   activeLayers,
   layerOpacity,
@@ -290,6 +301,7 @@ export default function BaseMap({
   }, [onSelectIndustry])
   const [loading, setLoading] = useState(false)
   const [isOutsideIndia, setIsOutsideIndia] = useState(false)
+  const [cursor, setCursor] = useState<string>('grab')
 
   // Map ref for screenshot capture
   const mapRef = useRef<MapRef>(null)
@@ -332,22 +344,49 @@ export default function BaseMap({
         }
       }
 
-      // Check if click was on an industry/power plant/refinery feature
-      const industrialLayers = ['industries-layer', 'power-plants-layer', 'refineries-layer']
+      // Check for cluster clicks first
+      const clickedCluster = features?.find((f: any) =>
+        f && f.layer && (CLUSTER_LAYERS.includes(f.layer.id) || f.properties?.cluster)
+      )
+
+      if (clickedCluster && target) {
+        const clusterId = clickedCluster.properties?.cluster_id
+        const sourceId = clickedCluster.layer?.source
+        if (clusterId !== undefined && sourceId) {
+          const mapSource: any = target.getSource(sourceId)
+          if (mapSource && typeof mapSource.getClusterExpansionZoom === 'function') {
+            mapSource.getClusterExpansionZoom(clusterId, (err: any, zoom: number) => {
+              if (err) return
+              const coords = clickedCluster.geometry?.coordinates || [lon, lat]
+              target.easeTo({
+                center: coords,
+                zoom: Math.min(zoom, 14),
+                duration: 500
+              })
+            })
+            return
+          }
+        }
+      }
+
+      // Check if click was on an individual industry/power plant/refinery feature
       let clickedFeature = null
 
       if (features && Array.isArray(features) && features.length > 0) {
         clickedFeature = features.find((f: any) =>
-          f && f.layer && industrialLayers.includes(f.layer.id)
+          f && f.layer && INDIVIDUAL_INDUSTRIAL_LAYERS.includes(f.layer.id)
         )
       }
 
-      // If no features from event, try querying from map
+      // If no features from event, try querying rendered features around the click point with a small tolerance
       if (!clickedFeature && target && event.point) {
         try {
           const point = event.point
-          // Check which industrial layers actually exist in the map
-          const existingLayers = industrialLayers.filter(layerId => {
+          const bbox: [[number, number], [number, number]] = [
+            [point.x - 4, point.y - 4],
+            [point.x + 4, point.y + 4]
+          ]
+          const existingLayers = INDIVIDUAL_INDUSTRIAL_LAYERS.filter(layerId => {
             try {
               return target.getLayer && target.getLayer(layerId)
             } catch {
@@ -355,9 +394,8 @@ export default function BaseMap({
             }
           })
 
-          // Only query if we have existing layers
           if (existingLayers.length > 0) {
-            const queriedFeatures = target.queryRenderedFeatures(point, {
+            const queriedFeatures = target.queryRenderedFeatures(bbox, {
               layers: existingLayers
             })
             if (queriedFeatures && Array.isArray(queriedFeatures) && queriedFeatures.length > 0) {
@@ -373,11 +411,15 @@ export default function BaseMap({
       if (clickedFeature && clickedFeature.properties) {
         const featureLat = clickedFeature.geometry?.coordinates?.[1]
         const featureLon = clickedFeature.geometry?.coordinates?.[0]
+        const finalLat = (typeof featureLat === 'number' && !isNaN(featureLat)) ? featureLat : lat
+        const finalLon = (typeof featureLon === 'number' && !isNaN(featureLon)) ? featureLon : lon
 
         setSelectedIndustry({
           ...clickedFeature.properties,
-          latitude: (typeof featureLat === 'number' && !isNaN(featureLat)) ? featureLat : lat,
-          longitude: (typeof featureLon === 'number' && !isNaN(featureLon)) ? featureLon : lon
+          name: clickedFeature.properties.name || clickedFeature.properties.facility_name || 'Industrial Facility',
+          type: clickedFeature.properties.type || clickedFeature.properties.industry_type || (clickedFeature.layer?.id?.includes('power') ? 'Thermal Power Plant' : 'Industrial Facility'),
+          latitude: finalLat,
+          longitude: finalLon
         })
         setClickedPoint(null)
         setAqiData(null)
@@ -385,10 +427,7 @@ export default function BaseMap({
         // Also fetch AQI for the industry location
         setLoading(true)
         try {
-          const result = await aqiAPI.calculateAtPoint(
-            (typeof featureLat === 'number' && !isNaN(featureLat)) ? featureLat : lat,
-            (typeof featureLon === 'number' && !isNaN(featureLon)) ? featureLon : lon
-          )
+          const result = await aqiAPI.calculateAtPoint(finalLat, finalLon)
           setAqiData(result)
         } catch (error) {
           console.error('Error calculating AQI for industry:', error)
@@ -443,6 +482,14 @@ export default function BaseMap({
         {...viewState}
         onMove={handleViewStateChange}
         onClick={handleMapClick}
+        interactiveLayerIds={INTERACTIVE_LAYERS}
+        cursor={cursor}
+        onMouseEnter={(e) => {
+          if (e.features && e.features.length > 0) {
+            setCursor('pointer')
+          }
+        }}
+        onMouseLeave={() => setCursor('grab')}
         mapStyle={FREE_BASEMAP_STYLES[currentBasemap].style as any}
         style={{ width: '100%', height: '100%' }}
         attributionControl={true}

@@ -26,153 +26,85 @@ def _get_fallback_validation_data() -> List[Dict]:
 
 
 async def get_aqi_validation() -> Dict:
-    """Validate AQI with fire correlation using real observations from SQLite."""
-    cache_key = "aqi_validation"
-    cached = get_cached_layer(cache_key)
-    if cached:
-        return cached
-
+    """Validate AQI with fire correlation using real measurements and FIRMS data."""
     features = []
-    source = 'OpenAQ + NASA FIRMS (Local SQLite Cache)'
+    source = 'None'
 
     try:
-        await db_manager.initialize()
+        measurements = await openaq_loader.fetch_latest_measurements(country='IN')
+        fires = await nasa_firms_loader.fetch_active_fires(days=1)
 
-        # Query real NASA FIRMS fires in mainland India
-        fire_rows = await db_manager.fetch_all(
-            """
-            SELECT latitude, longitude, frp, brightness, confidence, acq_date, acq_time
-            FROM nasa_firms_fires
-            WHERE latitude BETWEEN 15 AND 35 AND longitude BETWEEN 72 AND 89
-            ORDER BY frp DESC
-            LIMIT 300
-            """
-        )
+        if measurements and fires:
+            # Find stations near fire points - Return as GeoJSON
+            for fire in fires[:100]:  # Limit for performance
+                fire_lat = fire.get('latitude')
+                fire_lon = fire.get('longitude')
 
-        # Query real OpenAQ measurements
-        sensor_rows = await db_manager.fetch_all(
-            """
-            SELECT s.latitude, s.longitude, s.name, s.city, m.parameter, m.value
-            FROM openaq_measurements m
-            JOIN openaq_stations s ON m.station_id = s.station_id
-            WHERE m.value >= 0 AND s.latitude IS NOT NULL AND s.longitude IS NOT NULL
-            """
-        )
-
-        if not fire_rows or not sensor_rows:
-            # Attempt sync if empty
-            if not fire_rows:
-                await data_sync_service.sync_nasa_firms(days=2)
-                fire_rows = await db_manager.fetch_all(
-                    """
-                    SELECT latitude, longitude, frp, brightness, confidence, acq_date, acq_time
-                    FROM nasa_firms_fires
-                    WHERE latitude BETWEEN 6 AND 37 AND longitude BETWEEN 68 AND 98
-                    ORDER BY frp DESC
-                    LIMIT 150
-                    """
-                )
-            if not sensor_rows:
-                await data_sync_service.sync_openaq(location_limit=30)
-                sensor_rows = await db_manager.fetch_all(
-                    """
-                    SELECT s.latitude, s.longitude, s.name, s.city, m.parameter, m.value
-                    FROM openaq_measurements m
-                    JOIN openaq_stations s ON m.station_id = s.station_id
-                    WHERE m.value >= 0 AND s.latitude IS NOT NULL AND s.longitude IS NOT NULL
-                    """
-                )
-
-        if fire_rows and sensor_rows:
-            fire_rows = [dict(r) for r in fire_rows]
-            sensor_rows = [dict(r) for r in sensor_rows]
-
-            # Group sensor measurements by station coordinate
-            station_map = {}
-            for row in sensor_rows:
-                lat = float(row['latitude'])
-                lon = float(row['longitude'])
-                key = (round(lat, 3), round(lon, 3))
-                if key not in station_map:
-                    station_map[key] = {
-                        'lat': lat,
-                        'lon': lon,
-                        'city': row.get('city') or row.get('name') or 'Station',
-                        'pollutants': {}
-                    }
-                param = str(row.get('parameter', '')).lower().replace('.', '').replace('_', '')
+                # Validate coordinates
                 try:
-                    val = float(row['value'])
-                    station_map[key]['pollutants'][param] = val
+                    fire_lat = float(fire_lat)
+                    fire_lon = float(fire_lon)
+                    if not (-90 <= fire_lat <= 90 and -180 <= fire_lon <= 180):
+                        continue
                 except (ValueError, TypeError):
-                    pass
+                    continue
 
-            # Precalculate AQI for stations
-            station_aqi_list = []
-            for loc, s_info in station_map.items():
-                if s_info['pollutants']:
-                    aqi_calc = aqi_calculator.calculate_aqi(s_info['pollutants'])
-                    station_aqi_list.append({
-                        'lat': s_info['lat'],
-                        'lon': s_info['lon'],
-                        'city': s_info['city'],
-                        'aqi': aqi_calc['aqi'],
-                        'category': aqi_calc['category'],
-                        'color': aqi_calc.get('color', '#808080'),
-                        'dominant_pollutant': aqi_calc.get('dominant_pollutant', 'PM2.5'),
-                    })
+                # Find nearby measurements
+                nearby = []
+                for m in measurements:
+                    if not m.get('latitude') or not m.get('longitude'):
+                        continue
 
-            # Correlate fires with nearby sensor AQI (radius ~100km / ~0.9 deg)
-            for fire in fire_rows:
-                fire_lat = float(fire['latitude'])
-                fire_lon = float(fire['longitude'])
-                frp = float(fire.get('frp') or 0.0)
+                    dist = math.sqrt((float(m['latitude']) - fire_lat)**2 + (float(m['longitude']) - fire_lon)**2)
+                    if dist < 0.5:  # Within ~50km
+                        nearby.append(m)
 
-                # Find closest station
-                closest_station = None
-                min_dist = float('inf')
-                for st in station_aqi_list:
-                    d = math.hypot(st['lat'] - fire_lat, st['lon'] - fire_lon)
-                    if d < min_dist:
-                        min_dist = d
-                        closest_station = st
+                if nearby:
+                    # Calculate AQI
+                    params = {}
+                    for m in nearby:
+                        param = str(m.get('parameter', '')).lower().replace('.', '').replace('_', '')
+                        if param not in params:
+                            params[param] = []
+                        if m.get('value') is not None:
+                            try:
+                                params[param].append(float(m['value']))
+                            except (ValueError, TypeError):
+                                pass
 
-                # Regional correlation radius (~380km / 3.5 deg)
-                if closest_station and min_dist <= 3.5:
-                    dist_km = round(min_dist * 111.0, 1)
-                    features.append({
-                        'type': 'Feature',
-                        'geometry': {
-                            'type': 'Point',
-                            'coordinates': [fire_lon, fire_lat]
-                        },
-                        'properties': {
-                            'fire_intensity': frp,
-                            'aqi': closest_station['aqi'],
-                            'category': closest_station['category'],
-                            'color': closest_station['color'],
-                            'correlation': 'thermal_anomaly_matched',
-                            'dominant_pollutant': closest_station['dominant_pollutant'],
-                            'matched_station': closest_station['city'],
-                            'distance_km': dist_km,
-                            'confidence': str(fire.get('confidence', 'nominal'))
-                        }
-                    })
+                    if params:
+                        avg_params = {k: float(sum(v) / len(v)) for k, v in params.items() if v}
+                        if avg_params:
+                            aqi_result = aqi_calculator.calculate_aqi(avg_params)
+
+                            features.append({
+                                'type': 'Feature',
+                                'geometry': {
+                                    'type': 'Point',
+                                    'coordinates': [fire_lon, fire_lat]
+                                },
+                                'properties': {
+                                    'fire_intensity': fire.get('frp', 0.0),
+                                    'aqi': aqi_result['aqi'],
+                                    'category': aqi_result['category'],
+                                    'color': aqi_result.get('color', '#808080'),
+                                    'correlation': 'fire_detected',
+                                    'dominant_pollutant': aqi_result.get('dominant_pollutant', 'unknown')
+                                }
+                            })
+
+            if features:
+                source = 'OpenAQ + NASA FIRMS'
 
     except Exception as e:
         logger.warning(f"AQI validation error: {e}")
 
-    if not features:
-        source = 'None'
+    logger.info(f"Generated {len(features)} AQI validation points from {source}")
 
-    result = {
+    return {
         'type': 'FeatureCollection',
         'features': features,
         'count': len(features),
         'source': source,
-        'description': 'Real-time AQI validation correlated with NASA FIRMS thermal anomalies'
+        'description': 'AQI validation with fire detection correlation'
     }
-
-    set_cached_layer(cache_key, result)
-    logger.info(f"Generated {len(features)} AQI validation points from {source}")
-    return result

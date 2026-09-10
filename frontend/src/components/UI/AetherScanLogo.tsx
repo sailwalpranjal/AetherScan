@@ -1,4 +1,4 @@
-// Professional AetherScan Logo Component (SVG)
+// High-End Scientific Vector Badge Logo
 'use client'
 
 import { motion } from 'framer-motion'
@@ -14,112 +14,137 @@ export default function AetherScanLogo({ size = 40, className = '', animate = tr
     <svg
       width={size}
       height={size}
-      viewBox="0 0 100 100"
+      viewBox="0 0 120 120"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      {/* Gradient Definitions */}
       <defs>
-        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#06b6d4" />
-          <stop offset="100%" stopColor="#2563eb" />
+        <radialGradient id="lensGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="#0284c7" stopOpacity="0" />
+        </radialGradient>
+        
+        <linearGradient id="orbitalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.8" />
+          <stop offset="50%" stopColor="#818cf8" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#312e81" stopOpacity="0.8" />
         </linearGradient>
-        <linearGradient id="glowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.6" />
-          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.3" />
+
+        <linearGradient id="coreGradient" x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#0ea5e9" />
+          <stop offset="100%" stopColor="#e0f2fe" />
         </linearGradient>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-          <feMerge>
-            <feMergeNode in="coloredBlur"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
+
+        <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+        
+        <filter id="coreGlow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
       </defs>
 
-      {/* Outer Circle - Represents Earth/Atmosphere */}
-      <circle
-        cx="50"
-        cy="50"
-        r="45"
-        stroke="url(#logoGradient)"
-        strokeWidth="2"
-        fill="none"
-        opacity="0.3"
-      />
+      {/* Background Ambient Glow */}
+      <circle cx="60" cy="60" r="50" fill="url(#lensGlow)" />
 
-      {/* Middle Circle */}
+      {/* Outer Orbital Ring */}
       <circle
-        cx="50"
-        cy="50"
-        r="35"
-        stroke="url(#logoGradient)"
+        cx="60"
+        cy="60"
+        r="54"
+        stroke="url(#orbitalGradient)"
         strokeWidth="1.5"
         fill="none"
-        opacity="0.5"
+        strokeDasharray="4 8"
+        className="opacity-60"
       />
 
-      {/* Center - Air Quality Indicator */}
+      {/* Precision Reticle Outer */}
+      <path
+        d="M 60 5 L 60 15 M 60 105 L 60 115 M 5 60 L 15 60 M 105 60 L 115 60"
+        stroke="#38bdf8"
+        strokeWidth="2"
+        strokeLinecap="round"
+        className="opacity-80"
+      />
+
+      {/* Inner Technical Ring */}
       <circle
-        cx="50"
-        cy="50"
-        r="25"
-        fill="url(#glowGradient)"
-        filter="url(#glow)"
+        cx="60"
+        cy="60"
+        r="42"
+        stroke="#0284c7"
+        strokeWidth="1"
+        fill="none"
+        className="opacity-40"
       />
 
-      {/* AQI Wave Lines - Representing pollution/air monitoring */}
-      <path
-        d="M 30 50 Q 35 40, 40 50 T 50 50"
-        stroke="#ffffff"
+      {/* Geometric Core Polygon */}
+      <polygon
+        points="60,25 90,42 90,78 60,95 30,78 30,42"
+        stroke="url(#orbitalGradient)"
         strokeWidth="2"
         fill="none"
-        strokeLinecap="round"
-        opacity="0.9"
-      />
-      <path
-        d="M 50 50 Q 55 40, 60 50 T 70 50"
-        stroke="#ffffff"
-        strokeWidth="2"
-        fill="none"
-        strokeLinecap="round"
-        opacity="0.9"
+        filter="url(#neonGlow)"
+        className="opacity-80"
       />
 
-      {/* Data Points - Representing sensors */}
-      <circle cx="35" cy="30" r="3" fill="#ffffff" opacity="0.8" />
-      <circle cx="65" cy="30" r="3" fill="#ffffff" opacity="0.8" />
-      <circle cx="35" cy="70" r="3" fill="#ffffff" opacity="0.8" />
-      <circle cx="65" cy="70" r="3" fill="#ffffff" opacity="0.8" />
+      {/* Central Data Core */}
+      <circle
+        cx="60"
+        cy="60"
+        r="16"
+        fill="url(#coreGradient)"
+        filter="url(#coreGlow)"
+      />
 
-      {/* Scanning Lines */}
-      <line x1="50" y1="25" x2="50" y2="35" stroke="#ffffff" strokeWidth="1.5" opacity="0.6" />
-      <line x1="50" y1="65" x2="50" y2="75" stroke="#ffffff" strokeWidth="1.5" opacity="0.6" />
-      <line x1="25" y1="50" x2="35" y2="50" stroke="#ffffff" strokeWidth="1.5" opacity="0.6" />
-      <line x1="65" y1="50" x2="75" y2="50" stroke="#ffffff" strokeWidth="1.5" opacity="0.6" />
+      {/* Inner Core Detailing */}
+      <circle cx="60" cy="60" r="6" fill="#ffffff" className="opacity-90" />
+      
+      {/* Orbital Data Nodes */}
+      <circle cx="90" cy="42" r="3" fill="#ffffff" filter="url(#neonGlow)" />
+      <circle cx="30" cy="78" r="3" fill="#ffffff" filter="url(#neonGlow)" />
+      <circle cx="60" cy="25" r="3" fill="#ffffff" filter="url(#neonGlow)" />
+
+      {/* HUD Scanning Line */}
+      {animate && (
+        <line
+          x1="10"
+          y1="60"
+          x2="110"
+          y2="60"
+          stroke="#7dd3fc"
+          strokeWidth="1.5"
+          opacity="0.5"
+          filter="url(#neonGlow)"
+        >
+          <animateTransform
+            attributeName="transform"
+            type="translate"
+            values="0 -40; 0 40; 0 -40"
+            dur="4s"
+            repeatCount="indefinite"
+          />
+        </line>
+      )}
     </svg>
   )
 
-  if (!animate) {
-    return LogoSVG
-  }
+  if (!animate) return LogoSVG
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5, type: 'spring' }}
+      initial={{ opacity: 0, scale: 0.8, rotate: -30 }}
+      animate={{ opacity: 1, scale: 1, rotate: 0 }}
+      transition={{ duration: 0.8, type: 'spring', bounce: 0.4 }}
+      className="relative flex items-center justify-center"
     >
       <motion.div
-        animate={{
-          scale: [1, 1.05, 1],
-        }}
-        transition={{
-          duration: 3,
-          repeat: Infinity,
-          ease: 'easeInOut'
-        }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 40, repeat: Infinity, ease: 'linear' }}
       >
         {LogoSVG}
       </motion.div>

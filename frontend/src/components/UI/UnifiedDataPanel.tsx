@@ -1,13 +1,14 @@
 // Unified Data Panel - Futuristic Design
 'use client'
 
-import { X, MapPin, Wind, Droplets, Factory, Flame, AlertTriangle, TrendingUp, TrendingDown, Activity, Download, Cloud, Thermometer, Radio, Bookmark, BarChart3 } from 'lucide-react'
+import { X, MapPin, Wind, Droplets, Factory, Flame, AlertTriangle, TrendingUp, TrendingDown, Activity, Download, Cloud, Thermometer, Radio, Bookmark, BarChart3, FileText, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { aqiAPI } from '@/lib/api'
 import { Button } from '@/components/UI/button'
 import { Badge } from '@/components/UI/badge'
 import { Separator } from '@/components/UI/separator'
+import { generateExecutivePDF } from '@/utils/professionalPDFGenerator'
 
 interface PollutantData {
   pm25?: number
@@ -148,6 +149,7 @@ export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
   const [forecast, setForecast] = useState<ForecastDay[]>([])
   const [loadingForecast, setLoadingForecast] = useState(false)
   const [isBookmarked, setIsBookmarked] = useState(false)
+  const [generatingPDF, setGeneratingPDF] = useState(false)
 
   // Check if current location is bookmarked
   useEffect(() => {
@@ -228,6 +230,45 @@ export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
       }
     })
     window.dispatchEvent(event)
+  }
+
+  const handleDownloadPDF = async () => {
+    if (!data || generatingPDF) return
+    setGeneratingPDF(true)
+    try {
+      const industryInfo = {
+        name: data.location || data.city || 'Regional Environmental Station',
+        type: 'Ambient Air Quality Monitoring Node',
+        latitude: data.latitude || 28.6139,
+        longitude: data.longitude || 77.2090,
+        state: data.state || 'N/A',
+        district: data.city || 'N/A',
+        capacity: 'Continuous Baseline Telemetry',
+      }
+      const cleanAQIData = {
+        aqi: data.aqi,
+        category: data.category,
+        color: data.color,
+        dominant_pollutant: data.dominant_pollutant || 'pm25',
+        breakdowns: {
+          pm25: { concentration: data.pollutants?.pm25 ?? 0, sub_index: data.aqi, category: data.category },
+          pm10: { concentration: data.pollutants?.pm10 ?? 0, sub_index: data.aqi, category: data.category },
+          no2: { concentration: data.pollutants?.no2 ?? 0, sub_index: data.aqi, category: data.category },
+          so2: { concentration: data.pollutants?.so2 ?? 0, sub_index: data.aqi, category: data.category },
+          co: { concentration: data.pollutants?.co ?? 0, sub_index: data.aqi, category: data.category },
+          o3: { concentration: data.pollutants?.o3 ?? 0, sub_index: data.aqi, category: data.category },
+        },
+        latitude: data.latitude,
+        longitude: data.longitude,
+        timestamp: new Date().toISOString(),
+      }
+      await generateExecutivePDF(industryInfo, cleanAQIData as any, null)
+    } catch (err) {
+      console.error('Failed to generate PDF:', err)
+      alert('Failed to generate PDF report. Please try again.')
+    } finally {
+      setGeneratingPDF(false)
+    }
   }
 
   const exportData = (format: 'csv' | 'json') => {
@@ -664,6 +705,27 @@ export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
                 <span>Compare</span>
               </motion.button>
             </div>
+
+            {/* Primary PDF Report CTA */}
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={handleDownloadPDF}
+              disabled={generatingPDF}
+              className="w-full mt-2.5 px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium text-xs flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {generatingPDF ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                  <span>Compiling Forensic PDF Dossier...</span>
+                </>
+              ) : (
+                <>
+                  <FileText className="w-3.5 h-3.5 text-cyan-200" />
+                  <span>Download Environmental Dossier (PDF)</span>
+                </>
+              )}
+            </motion.button>
           </div>
 
           {/* Footer with Export */}
@@ -672,7 +734,20 @@ export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
               <p className="text-xs text-gray-400">
                 Based on AQICN & CPCB · Real-time data
               </p>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDownloadPDF}
+                  disabled={generatingPDF}
+                  className="p-1.5 rounded-lg glass hover:bg-white/10 transition-all group flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 px-2"
+                  title="Export 4-Page PDF Dossier"
+                >
+                  {generatingPDF ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+                  ) : (
+                    <FileText className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
+                  )}
+                  <span className="text-[11px] font-medium">PDF</span>
+                </button>
                 <button
                   onClick={() => exportData('json')}
                   className="p-1.5 rounded-lg glass hover:bg-white/10 transition-all group"

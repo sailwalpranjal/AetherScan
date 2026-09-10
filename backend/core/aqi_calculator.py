@@ -75,14 +75,26 @@ class CPCBAQICalculator:
         if concentration < 0:
             return None
 
+        # Unit normalization:
+        # CPCB standards define CO in mg/m³ (range 0-50 mg/m³).
+        # Sensor networks (OpenAQ, etc.) and atmospheric models frequently report CO in µg/m³ (range 0-50000 µg/m³).
+        # If CO concentration > 50.0, it is in µg/m³; convert to mg/m³ by dividing by 1000.
+        norm_concentration = float(concentration)
+        if pollutant == 'co':
+            if norm_concentration > 50.0:
+                norm_concentration = norm_concentration / 1000.0
+            # If concentration is still impossibly high (> 100 mg/m³ which is lethal sensor anomaly), discard
+            if norm_concentration > 100.0:
+                return None
+
         breakpoints = CPCBAQICalculator.BREAKPOINTS[pollutant]
 
         for c_low, c_high, i_low, i_high in breakpoints:
-            if c_low <= concentration <= c_high:
+            if c_low <= norm_concentration <= c_high:
                 if c_high == c_low:
                     return float(i_low)
 
-                sub_index = ((i_high - i_low) / (c_high - c_low)) * (concentration - c_low) + i_low
+                sub_index = ((i_high - i_low) / (c_high - c_low)) * (norm_concentration - c_low) + i_low
                 return round(sub_index, 2)
 
         # If concentration exceeds all breakpoints, use the highest category
@@ -110,9 +122,13 @@ class CPCBAQICalculator:
                 sub_index = CPCBAQICalculator.calculate_sub_index(pollutant_lower, concentration)
 
                 if sub_index is not None:
+                    display_concentration = concentration
+                    if pollutant_lower == 'co' and concentration > 50.0:
+                        display_concentration = round(concentration / 1000.0, 2)
+
                     sub_indices[pollutant_lower] = sub_index
                     breakdowns[pollutant] = {
-                        'concentration': concentration,
+                        'concentration': display_concentration,
                         'sub_index': sub_index,
                         'category': CPCBAQICalculator.get_category_and_color(sub_index)[0]
                     }

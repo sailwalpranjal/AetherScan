@@ -13,6 +13,7 @@ import { Badge } from '@/components/UI/badge'
 import CustomCursor from '@/components/UI/CustomCursor'
 import FloatingParticles from '@/components/UI/FloatingParticles'
 import { buildApiUrl } from '@/lib/api'
+import { generateExecutivePDF } from '@/utils/professionalPDFGenerator'
 
 // Dynamic imports for better performance
 const BaseMap = dynamic(() => import('@/components/Map/BaseMap'), { ssr: false })
@@ -178,6 +179,7 @@ export default function Home() {
   const [comparisonInitialLocation, setComparisonInitialLocation] = useState<{ lat: number; lon: number; name: string } | undefined>(undefined)
   const [bookmarksOpen, setBookmarksOpen] = useState(false)
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
+  const [isExportingPDF, setIsExportingPDF] = useState(false)
 
   // Handlers
   const toggleLayer = (layerId: string) => {
@@ -268,6 +270,55 @@ export default function Home() {
     }
   }, [])
 
+  const handleExportPDF = async () => {
+    if (isExportingPDF) return
+    setIsExportingPDF(true)
+    try {
+      const targetFacility = selectedIndustry || (selectedLocation ? {
+        name: selectedLocation.location || selectedLocation.city || 'Regional Environmental Station',
+        type: 'Ambient Air Quality Node',
+        latitude: selectedLocation.latitude || viewState.latitude,
+        longitude: selectedLocation.longitude || viewState.longitude,
+        state: selectedLocation.state || 'N/A',
+        district: selectedLocation.city || 'N/A',
+        capacity: 'Continuous Baseline Telemetry',
+      } : {
+        name: 'Regional Air Quality Assessment Zone',
+        type: 'Regional Geospatial Sector',
+        latitude: viewState.latitude,
+        longitude: viewState.longitude,
+        state: 'National Territory',
+        district: 'Central Node',
+        capacity: 'Satellite & Ground Observations',
+      })
+
+      const targetAQI = selectedLocation ? {
+        aqi: selectedLocation.aqi,
+        category: selectedLocation.category,
+        color: selectedLocation.color,
+        dominant_pollutant: selectedLocation.dominant_pollutant || 'pm25',
+        breakdowns: {
+          pm25: { concentration: selectedLocation.pollutants?.pm25 ?? 0, sub_index: selectedLocation.aqi, category: selectedLocation.category },
+          pm10: { concentration: selectedLocation.pollutants?.pm10 ?? 0, sub_index: selectedLocation.aqi, category: selectedLocation.category },
+          no2: { concentration: selectedLocation.pollutants?.no2 ?? 0, sub_index: selectedLocation.aqi, category: selectedLocation.category },
+          so2: { concentration: selectedLocation.pollutants?.so2 ?? 0, sub_index: selectedLocation.aqi, category: selectedLocation.category },
+          co: { concentration: selectedLocation.pollutants?.co ?? 0, sub_index: selectedLocation.aqi, category: selectedLocation.category },
+          o3: { concentration: selectedLocation.pollutants?.o3 ?? 0, sub_index: selectedLocation.aqi, category: selectedLocation.category },
+        },
+        latitude: selectedLocation.latitude,
+        longitude: selectedLocation.longitude,
+        timestamp: new Date().toISOString(),
+      } : null
+
+      await generateExecutivePDF(targetFacility, targetAQI as any, null)
+    } catch (error) {
+      console.error('Error generating global PDF dossier:', error)
+      alert('Failed to generate PDF report. Please try again.')
+    } finally {
+      setIsExportingPDF(false)
+    }
+  }
+
   return (
     <>
       <PageLoader isLoading={isPageLoading} />
@@ -331,6 +382,8 @@ export default function Home() {
       <ModernHeader
         activeLayersCount={activeLayers.length}
         onMenuClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        onExportPDF={handleExportPDF}
+        isExportingPDF={isExportingPDF}
       />
 
       {/* Map - Full Screen */}

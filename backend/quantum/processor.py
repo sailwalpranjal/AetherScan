@@ -376,7 +376,10 @@ class QuantumEnvironmentalProcessor:
             if bit == '0':
                 qc.x(i)
         qc.h(self.num_qubits - 1)
-        qc.mct(list(range(self.num_qubits - 1)), self.num_qubits - 1)
+        if hasattr(qc, 'mcx'):
+            qc.mcx(list(range(self.num_qubits - 1)), self.num_qubits - 1)
+        else:
+            qc.mct(list(range(self.num_qubits - 1)), self.num_qubits - 1)
         qc.h(self.num_qubits - 1)
         for i, bit in enumerate(target_binary):
             if bit == '0':
@@ -389,7 +392,10 @@ class QuantumEnvironmentalProcessor:
             qc.h(i)
             qc.x(i)
         qc.h(self.num_qubits - 1)
-        qc.mct(list(range(self.num_qubits - 1)), self.num_qubits - 1)
+        if hasattr(qc, 'mcx'):
+            qc.mcx(list(range(self.num_qubits - 1)), self.num_qubits - 1)
+        else:
+            qc.mct(list(range(self.num_qubits - 1)), self.num_qubits - 1)
         qc.h(self.num_qubits - 1)
         for i in range(self.num_qubits):
             qc.x(i)

@@ -1,11 +1,17 @@
 """
-NASA Satellite Data Loader - REAL SATELLITE DATA
-Processes OMI NO2, VIIRS AOD, and AIRS data from NASA
+NASA Satellite Data Loader - REAL SATELLITE & OBSERVATIONAL DATA
+Processes OMI NO2, VIIRS AOD, and AIRS data from NASA & verified monitoring networks
+Strict zero-fake-data policy: No synthetic random jitter (np.random.uniform).
 """
-import numpy as np
+import logging
+import sqlite3
 from pathlib import Path
 from typing import List, Dict, Optional
+import numpy as np
+
 from config.settings import settings
+
+logger = logging.getLogger(__name__)
 
 # Optional HDF5/NetCDF support - graceful degradation if unavailable
 try:
@@ -22,223 +28,195 @@ except ImportError:
     Dataset = None
     NETCDF4_AVAILABLE = False
 
+
 class NASASatelliteLoader:
-    """Load and process NASA satellite data files"""
+    """Load and process NASA satellite data files and verified observational datasets."""
 
     def __init__(self):
-        # Use absolute path to backend/cache/data directory
         backend_dir = Path(__file__).parent.parent
         self.cache_dir = backend_dir / "cache" / "data"
-        # NASA API key loaded from environment variable via settings
         self.nasa_api_key = settings.NASA_EARTHDATA_API_KEY
-        print(f"[INIT] NASA Satellite Loader cache_dir: {self.cache_dir}")
+        logger.info(f"[INIT] NASA Satellite Loader cache_dir: {self.cache_dir}")
+
+    def _get_db_connection(self) -> Optional[sqlite3.Connection]:
+        """Establish connection to local database for verified observational ground truth."""
+        try:
+            db_path = Path(settings.DATABASE_PATH).resolve()
+            if db_path.exists():
+                return sqlite3.connect(str(db_path))
+        except Exception as e:
+            logger.warning(f"Could not connect to database: {e}")
+        return None
+
+    def _load_db_measurements(self, parameter: str) -> List[Dict]:
+        """
+        Query verified observational sensor data for a specific pollutant
+        from OpenAQ / CPCB stations stored in SQLite.
+        """
+        conn = self._get_db_connection()
+        if not conn:
+            return []
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT s.name, s.latitude, s.longitude, m.value, m.unit, m.dqs
+                FROM openaq_measurements m
+                JOIN openaq_stations s ON m.station_id = s.station_id
+                WHERE m.parameter = ? AND m.value IS NOT NULL AND m.value > 0
+                ORDER BY m.timestamp DESC
+            """, (parameter,))
+            rows = cur.fetchall()
+            results = []
+            seen_locs = set()
+            for name, lat, lon, val, unit, dqs in rows:
+                if lat is None or lon is None:
+                    continue
+                loc_key = (round(float(lat), 3), round(float(lon), 3))
+                if loc_key in seen_locs:
+                    continue
+                seen_locs.add(loc_key)
+                results.append({
+                    'name': name,
+                    'latitude': float(lat),
+                    'longitude': float(lon),
+                    'value': float(val),
+                    'unit': unit or 'µg/m³',
+                    'quality': 'verified_cpcb' if (dqs and dqs > 0.7) else 'good',
+                    'dqs': dqs or 0.85
+                })
+            return results
+        except Exception as e:
+            logger.warning(f"Error querying {parameter} from database: {e}")
+            return []
+        finally:
+            conn.close()
 
     def load_omi_no2(self) -> List[Dict]:
         """
-        Load OMI NO2 data - uses model data based on urban/industrial patterns
+        Load OMI NO2 data from local HDF5 files if intersecting India,
+        or from verified CPCB/OpenAQ ground monitoring network observations.
 
         Returns:
             List of NO2 measurements with lat, lon, value
         """
-        print("[INFO] Generating NO2 grid based on urban pollution patterns")
+        logger.info("[INFO] Loading real NO2 observations (Satellite / CPCB Network)")
 
-        # Major urban/industrial centers with realistic NO2 levels (molecules/cm²)
-        urban_centers = [
-            {'lat': 28.7, 'lon': 77.1, 'no2': 8.5e15, 'name': 'Delhi NCR'},
-            {'lat': 19.1, 'lon': 72.9, 'no2': 7.2e15, 'name': 'Mumbai'},
-            {'lat': 22.6, 'lon': 88.4, 'no2': 6.8e15, 'name': 'Kolkata'},
-            {'lat': 13.0, 'lon': 80.3, 'no2': 5.9e15, 'name': 'Chennai'},
-            {'lat': 12.9, 'lon': 77.6, 'no2': 5.1e15, 'name': 'Bangalore'},
-            {'lat': 17.4, 'lon': 78.5, 'no2': 6.3e15, 'name': 'Hyderabad'},
-            {'lat': 23.0, 'lon': 72.6, 'no2': 6.1e15, 'name': 'Ahmedabad'},
-            {'lat': 18.5, 'lon': 73.9, 'no2': 5.4e15, 'name': 'Pune'},
-            {'lat': 26.9, 'lon': 75.8, 'no2': 4.8e15, 'name': 'Jaipur'},
-            {'lat': 21.1, 'lon': 79.1, 'no2': 4.2e15, 'name': 'Nagpur'},
-        ]
+        # 1. Try local HDF5 satellite file
+        if H5PY_AVAILABLE and self.cache_dir.exists():
+            omi_files = list(self.cache_dir.glob("OMI-*.he5"))
+            for omi_file in omi_files:
+                try:
+                    with h5py.File(str(omi_file), 'r') as f:
+                        swath = f.get('HDFEOS/SWATHS/ColumnAmountNO2')
+                        if swath:
+                            lats = swath['Geolocation Fields/Latitude'][:]
+                            lons = swath['Geolocation Fields/Longitude'][:]
+                            no2 = swath['Data Fields/ColumnAmountNO2Trop'][:]
+                            # India bounding box: lat 6 to 38, lon 68 to 98
+                            mask = (lats >= 6.0) & (lats <= 38.0) & (lons >= 68.0) & (lons <= 98.0) & (no2 > 0) & (no2 < 1e18)
+                            if np.any(mask):
+                                sub_lats = lats[mask][::4]
+                                sub_lons = lons[mask][::4]
+                                sub_no2 = no2[mask][::4]
+                                results = []
+                                for lat, lon, val in zip(sub_lats, sub_lons, sub_no2):
+                                    results.append({
+                                        'latitude': float(lat),
+                                        'longitude': float(lon),
+                                        'no2_concentration': float(val),
+                                        'quality': 'good',
+                                        'unit': 'molecules/cm²'
+                                    })
+                                logger.info(f"[OK] Extracted {len(results)} satellite NO2 points from {omi_file.name}")
+                                return results
+                except Exception as exc:
+                    logger.warning(f"Error reading OMI file {omi_file}: {exc}")
 
-        results = []
+        # 2. Extract verified CPCB / OpenAQ ground stations from database
+        db_records = self._load_db_measurements('no2')
+        if db_records:
+            results = []
+            for r in db_records:
+                results.append({
+                    'latitude': r['latitude'],
+                    'longitude': r['longitude'],
+                    'no2_concentration': r['value'],
+                    'quality': r['quality'],
+                    'unit': r['unit'],
+                    'name': r['name']
+                })
+            logger.info(f"[OK] Loaded {len(results)} verified CPCB/OpenAQ NO2 station measurements")
+            return results
 
-        # Add urban centers
-        for center in urban_centers:
-            results.append({
-                'latitude': center['lat'],
-                'longitude': center['lon'],
-                'no2_concentration': center['no2'],
-                'quality': 'good',
-                'unit': 'molecules/cm²'
-            })
-
-        # Add grid points with interpolated values
-        for lat in np.arange(8, 36, 3):
-            for lon in np.arange(70, 95, 3):
-                # Calculate distance-weighted NO2 from urban centers
-                total_weight = 0
-                weighted_no2 = 0
-
-                for center in urban_centers:
-                    dist = np.sqrt((lat - center['lat'])**2 + (lon - center['lon'])**2)
-                    if dist < 12:  # Within ~1200km
-                        weight = 1.0 / (dist + 1)**2
-                        total_weight += weight
-                        weighted_no2 += weight * center['no2']
-
-                if total_weight > 0:
-                    no2_val = weighted_no2 / total_weight
-                    # Add natural variation
-                    no2_val *= (1 + np.random.uniform(-0.15, 0.15))
-                    no2_val = max(1e14, min(no2_val, 1e16))  # Realistic range
-
-                    results.append({
-                        'latitude': float(lat),
-                        'longitude': float(lon),
-                        'no2_concentration': float(no2_val),
-                        'quality': 'good',
-                        'unit': 'molecules/cm²'
-                    })
-
-        print(f"[OK] Generated {len(results)} NO2 grid points based on pollution patterns")
-        return results
+        return []
 
     def load_viirs_aod(self) -> List[Dict]:
         """
-        Load VIIRS AOD data - uses model data based on dust/pollution patterns
+        Load VIIRS AOD data from local NetCDF files if intersecting India,
+        or return empty to route to the ISRO Bhuvan WMS AOD service.
 
         Returns:
             List of AOD measurements with lat, lon, value
         """
-        print("[INFO] Generating AOD grid based on aerosol patterns")
+        logger.info("[INFO] Loading real VIIRS AOD data")
 
-        # Regions with high aerosol loading (dust + pollution)
-        aerosol_hotspots = [
-            {'lat': 28.7, 'lon': 77.1, 'aod': 1.8, 'name': 'Delhi NCR'},
-            {'lat': 26.9, 'lon': 75.8, 'aod': 1.6, 'name': 'Rajasthan'},  # Desert dust
-            {'lat': 23.0, 'lon': 72.6, 'aod': 1.5, 'name': 'Gujarat'},
-            {'lat': 19.1, 'lon': 72.9, 'aod': 1.2, 'name': 'Mumbai'},
-            {'lat': 22.6, 'lon': 88.4, 'aod': 1.4, 'name': 'Kolkata'},
-            {'lat': 30.3, 'lon': 78.0, 'aod': 1.1, 'name': 'Uttarakhand'},
-            {'lat': 13.0, 'lon': 80.3, 'aod': 0.9, 'name': 'Chennai'},
-            {'lat': 12.9, 'lon': 77.6, 'aod': 0.7, 'name': 'Bangalore'},
-        ]
+        if NETCDF4_AVAILABLE and self.cache_dir.exists():
+            nc_files = list(self.cache_dir.glob("AERDB_L2_VIIRS_*.nc"))
+            for nc_file in nc_files:
+                try:
+                    with Dataset(str(nc_file), 'r') as ds:
+                        if 'Latitude' in ds.variables and 'Longitude' in ds.variables:
+                            lats = ds.variables['Latitude'][:]
+                            lons = ds.variables['Longitude'][:]
+                            aod_var = ds.variables.get('Aerosol_Optical_Thickness_550_Land_Ocean_Best_Estimate')
+                            if aod_var is not None:
+                                aod_vals = aod_var[:]
+                                mask = (lats >= 6.0) & (lats <= 38.0) & (lons >= 68.0) & (lons <= 98.0) & (aod_vals > 0.0) & (aod_vals < 5.0)
+                                if np.any(mask):
+                                    sub_lats = lats[mask][::4]
+                                    sub_lons = lons[mask][::4]
+                                    sub_aod = aod_vals[mask][::4]
+                                    results = []
+                                    for lat, lon, val in zip(sub_lats, sub_lons, sub_aod):
+                                        results.append({
+                                            'latitude': float(lat),
+                                            'longitude': float(lon),
+                                            'aod': float(val),
+                                            'quality': 'good',
+                                            'wavelength': '550nm'
+                                        })
+                                    logger.info(f"[OK] Extracted {len(results)} VIIRS AOD points from {nc_file.name}")
+                                    return results
+                except Exception as exc:
+                    logger.warning(f"Error reading VIIRS file {nc_file}: {exc}")
 
-        results = []
-
-        # Add hotspots
-        for hotspot in aerosol_hotspots:
-            results.append({
-                'latitude': hotspot['lat'],
-                'longitude': hotspot['lon'],
-                'aod': hotspot['aod'],
-                'quality': 'good',
-                'wavelength': '550nm'
-            })
-
-        # Add grid points
-        for lat in np.arange(8, 36, 2.5):
-            for lon in np.arange(70, 95, 2.5):
-                # Calculate distance-weighted AOD
-                total_weight = 0
-                weighted_aod = 0
-
-                for hotspot in aerosol_hotspots:
-                    dist = np.sqrt((lat - hotspot['lat'])**2 + (lon - hotspot['lon'])**2)
-                    if dist < 10:
-                        weight = 1.0 / (dist + 1)**2
-                        total_weight += weight
-                        weighted_aod += weight * hotspot['aod']
-
-                if total_weight > 0:
-                    aod_val = weighted_aod / total_weight
-                    # Add variation
-                    aod_val *= (1 + np.random.uniform(-0.2, 0.2))
-                    aod_val = max(0.1, min(aod_val, 3.0))  # Realistic range
-
-                    results.append({
-                        'latitude': float(lat),
-                        'longitude': float(lon),
-                        'aod': float(aod_val),
-                        'quality': 'good',
-                        'wavelength': '550nm'
-                    })
-
-        print(f"[OK] Generated {len(results)} AOD grid points based on aerosol patterns")
-        return results
+        return []
 
     def get_so2_sample_grid(self) -> List[Dict]:
         """
-        Generate SO2 grid based on known pollution patterns in India
-        Uses realistic concentration values for industrial regions
+        Load real SO2 measurements from verified CPCB/OpenAQ monitoring stations.
 
         Returns:
-            List of SO2 measurements
+            List of verified SO2 station measurements
         """
-        print("[INFO] Generating SO2 grid based on pollution patterns")
+        logger.info("[INFO] Loading verified SO2 observations from CPCB/OpenAQ network")
+        db_records = self._load_db_measurements('so2')
+        if db_records:
+            results = []
+            for r in db_records:
+                results.append({
+                    'latitude': r['latitude'],
+                    'longitude': r['longitude'],
+                    'so2_concentration': r['value'],
+                    'quality': r['quality'],
+                    'unit': r['unit'],
+                    'source': f"CPCB Station: {r['name']}"
+                })
+            logger.info(f"[OK] Loaded {len(results)} verified SO2 measurements from monitoring stations")
+            return results
 
-        # Major industrial zones in India with realistic SO2 levels
-        industrial_zones = [
-            # North India industrial belt
-            {'lat': 28.7, 'lon': 77.1, 'so2': 12.5, 'name': 'Delhi NCR'},
-            {'lat': 30.3, 'lon': 78.0, 'so2': 8.3, 'name': 'Uttarakhand'},
-            {'lat': 26.9, 'lon': 75.8, 'so2': 9.7, 'name': 'Rajasthan'},
+        return []
 
-            # Western industrial belt
-            {'lat': 19.1, 'lon': 72.9, 'so2': 15.2, 'name': 'Mumbai'},
-            {'lat': 23.0, 'lon': 72.6, 'so2': 11.4, 'name': 'Ahmedabad'},
-            {'lat': 21.1, 'lon': 79.1, 'so2': 10.8, 'name': 'Nagpur'},
-
-            # Eastern industrial belt
-            {'lat': 22.6, 'lon': 88.4, 'so2': 14.6, 'name': 'Kolkata'},
-            {'lat': 23.7, 'lon': 86.4, 'so2': 9.2, 'name': 'Jharkhand'},
-            {'lat': 20.3, 'lon': 85.8, 'so2': 7.8, 'name': 'Odisha'},
-
-            # Southern industrial belt
-            {'lat': 13.0, 'lon': 80.3, 'so2': 13.1, 'name': 'Chennai'},
-            {'lat': 12.9, 'lon': 77.6, 'so2': 11.9, 'name': 'Bangalore'},
-            {'lat': 17.4, 'lon': 78.5, 'so2': 12.3, 'name': 'Hyderabad'},
-        ]
-
-        results = []
-
-        # Add industrial zones
-        for zone in industrial_zones:
-            results.append({
-                'latitude': zone['lat'],
-                'longitude': zone['lon'],
-                'so2_concentration': zone['so2'],
-                'quality': 'estimated',
-                'unit': 'DU',
-                'source': f"Industrial zone - {zone['name']}"
-            })
-
-        # Add grid points with interpolated values
-        for lat in range(8, 36, 4):
-            for lon in range(70, 95, 4):
-                # Calculate distance-weighted SO2 from industrial zones
-                total_weight = 0
-                weighted_so2 = 0
-
-                for zone in industrial_zones:
-                    dist = np.sqrt((lat - zone['lat'])**2 + (lon - zone['lon'])**2)
-                    if dist < 10:  # Within ~1000km
-                        weight = 1.0 / (dist + 1)**2
-                        total_weight += weight
-                        weighted_so2 += weight * zone['so2']
-
-                if total_weight > 0:
-                    so2_val = weighted_so2 / total_weight
-                    # Add natural variation
-                    so2_val += np.random.uniform(-1, 1)
-                    so2_val = max(0.5, min(so2_val, 20))  # Realistic range
-
-                    results.append({
-                        'latitude': float(lat),
-                        'longitude': float(lon),
-                        'so2_concentration': round(so2_val, 2),
-                        'quality': 'interpolated',
-                        'unit': 'DU'
-                    })
-
-        print(f"[OK] Generated {len(results)} SO2 grid points")
-        return results
 
 # Global instance - lazy loaded
 _nasa_satellite_loader_instance = None
