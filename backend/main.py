@@ -10,7 +10,7 @@ import uvicorn
 
 from config.settings import settings
 from db.database import db_manager
-from routes import tiles, layers, aqi, search
+from routes import tiles, layers, aqi, search, facility
 from data_sources.aqicn_service import initialize_aqicn_service
 from middleware import get_database_guard
 
@@ -123,6 +123,7 @@ app.include_router(tiles.router)
 app.include_router(layers.router)
 app.include_router(aqi.router)
 app.include_router(search.router)
+app.include_router(facility.router)
 
 @app.get("/")
 async def root():
@@ -132,6 +133,7 @@ async def root():
         "layers": "/layers",
         "aqi": "/aqi",
         "search": "/search",
+        "facility": "/facility",
         "docs": "/docs"
     }
     if quantum_enabled:

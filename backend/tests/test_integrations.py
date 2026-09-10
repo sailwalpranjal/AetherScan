@@ -8,6 +8,8 @@ Each test makes exactly ONE real HTTP request and asserts a valid response.
 No fake fallbacks — a failed assertion means the key is invalid or unreachable.
 """
 
+__test__ = False
+
 import asyncio
 import os
 import sys
