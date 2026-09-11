@@ -273,6 +273,80 @@ class DataSyncService:
             logger.error(f"[DATA_SYNC] OpenAQ sync error: {e}", exc_info=True)
             return {"stations": 0, "measurements": 0}
 
+    async def sync_openmeteo(self) -> Dict[str, int]:
+        """
+        Fetch real-time Copernicus ECMWF/CAMS observations across India from Open-Meteo.
+        Computes observation-level DQS and batch inserts into SQLite.
+        Runs without requiring any API keys.
+        """
+        await db_manager.initialize()
+        logger.info("[DATA_SYNC] Querying Open-Meteo / Copernicus ECMWF for India...")
+
+        try:
+            from data_sources.openmeteo_provider import openmeteo_provider
+            raw_data = await openmeteo_provider.fetch_data()
+            if not raw_data:
+                logger.warning("[DATA_SYNC] No data returned by Open-Meteo.")
+                return {"stations": 0, "measurements": 0}
+
+            processed = await openmeteo_provider.process_data(raw_data)
+            stations = processed.get("stations", [])
+            measurements = processed.get("measurements", [])
+
+            st_rows = [
+                (
+                    s["station_id"],
+                    s["name"],
+                    s["latitude"],
+                    s["longitude"],
+                    s["city"],
+                    s["country"],
+                    s["last_updated"],
+                    s["parameters"]
+                )
+                for s in stations
+            ]
+
+            m_rows = [
+                (
+                    m["station_id"],
+                    m["parameter"],
+                    m["value"],
+                    m["unit"],
+                    m["timestamp"],
+                    m["dqs"]
+                )
+                for m in measurements
+            ]
+
+            if st_rows and db_manager._db:
+                await db_manager._db.executemany(
+                    """
+                    INSERT OR REPLACE INTO openaq_stations
+                    (station_id, name, latitude, longitude, city, country, last_updated, parameters)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    st_rows
+                )
+                await db_manager._db.commit()
+
+            if m_rows and db_manager._db:
+                await db_manager._db.executemany(
+                    """
+                    INSERT INTO openaq_measurements
+                    (station_id, parameter, value, unit, timestamp, dqs)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    m_rows
+                )
+                await db_manager._db.commit()
+
+            logger.info(f"[DATA_SYNC] Stored {len(st_rows)} Copernicus stations and {len(m_rows)} real observations in SQLite.")
+            return {"stations": len(st_rows), "measurements": len(m_rows)}
+        except Exception as e:
+            logger.error(f"[DATA_SYNC] Open-Meteo sync error: {e}", exc_info=True)
+            return {"stations": 0, "measurements": 0}
+
     async def run_full_sync(self):
         """Run all data synchronization tasks concurrently."""
         logger.info("[DATA_SYNC] Starting full environmental intelligence synchronization...")
@@ -281,6 +355,7 @@ class DataSyncService:
             self.sync_industries(),
             self.sync_nasa_firms(days=3),
             self.sync_openaq(location_limit=40),
+            self.sync_openmeteo(),
             return_exceptions=True
         )
         elapsed = time.monotonic() - t0
@@ -288,3 +363,4 @@ class DataSyncService:
 
 
 data_sync_service = DataSyncService()
+

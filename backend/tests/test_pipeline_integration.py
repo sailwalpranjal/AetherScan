@@ -128,14 +128,22 @@ def get_mock_openaq_measurements(now_utc: datetime) -> Dict[str, Any]:
 def get_mock_firms_csv(today_str: Optional[str] = None) -> str:
     """Realistic NASA FIRMS Area API CSV output with fresh, non-future timestamp."""
     recent_dt = datetime.now(timezone.utc) - timedelta(minutes=15)
-    acq_date = today_str or recent_dt.strftime("%Y-%m-%d")
-    acq_time = recent_dt.strftime("%H%M")
+    if today_str:
+        acq_date = today_str
+        if today_str != recent_dt.strftime("%Y-%m-%d"):
+            acq_time = datetime.now(timezone.utc).strftime("%H%M")
+        else:
+            acq_time = recent_dt.strftime("%H%M")
+    else:
+        acq_date = recent_dt.strftime("%Y-%m-%d")
+        acq_time = recent_dt.strftime("%H%M")
     return (
         "latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,confidence,version,bright_ti5,frp,daynight\n"
         f"29.12345,76.54321,342.5,0.4,0.4,{acq_date},{acq_time},VIIRS_SNPP,nominal,2.0NRT,295.2,14.8,D\n"
         f"29.54321,76.98765,365.1,0.5,0.4,{acq_date},{acq_time},VIIRS_SNPP,high,2.0NRT,301.0,22.4,D\n"
         f"30.11111,75.22222,328.0,0.4,0.4,{acq_date},{acq_time},MODIS_Terra,low,6.1NRT,290.5,8.2,D\n"
     )
+
 
 
 # =============================================================================

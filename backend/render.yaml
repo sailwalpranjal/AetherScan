@@ -4,7 +4,7 @@
 services:
   - type: web
     name: aetherscan-api
-    env: python
+    runtime: python
     region: oregon
     plan: free
     branch: master
@@ -13,7 +13,7 @@ services:
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
-        value: "3.11.0"
+        value: "3.11.7"
       - key: NASA_FIRMS_API_KEY
         sync: false
       - key: OPENWEATHER_API_KEY
@@ -27,8 +27,8 @@ services:
       - key: CORS_ORIGINS
         sync: false
       - key: DATABASE_PATH
-        value: "./cache/aetherscan.db"
+        value: "/tmp/aetherscan.db"
       - key: TILE_CACHE_DIR
-        value: "./cache/tiles"
+        value: "/tmp/tiles"
       - key: DATA_CACHE_DIR
-        value: "./cache/data"
+        value: "/tmp/data"

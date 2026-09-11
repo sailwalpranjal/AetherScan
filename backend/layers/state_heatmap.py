@@ -94,15 +94,20 @@ STATE_DATA = {
 }
 
 def _match_city_to_state(city_name: str) -> str:
-    """Match a city name to its state"""
+    """Match a city name or state name to its state"""
+    if not city_name:
+        return None
     city_lower = city_name.lower().strip()
 
     for state_name, data in STATE_DATA.items():
+        if state_name.lower() == city_lower or state_name.lower() in city_lower:
+            return state_name
         for city in data['cities']:
             if city in city_lower or city_lower in city:
                 return state_name
 
     return None
+
 
 
 def _get_fallback_state_data() -> List[Dict]:

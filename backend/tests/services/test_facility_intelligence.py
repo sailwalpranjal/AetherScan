@@ -220,8 +220,9 @@ async def populated_db():
     now = datetime.now(timezone.utc)
     ts_now = now.isoformat()
     ts_older = (now - timedelta(hours=3)).isoformat()
-    today_date = now.strftime("%Y-%m-%d")
-    recent_acq_time = (now - timedelta(minutes=15)).strftime("%H%M")
+    recent_dt = now - timedelta(minutes=15)
+    today_date = recent_dt.strftime("%Y-%m-%d")
+    recent_acq_time = recent_dt.strftime("%H%M")
 
     # 1. Seed Facilities
     await db.execute(

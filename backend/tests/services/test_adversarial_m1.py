@@ -402,8 +402,9 @@ async def combo_matrix_db():
 
     now_utc = datetime.now(timezone.utc)
     now_iso = now_utc.isoformat()
-    today_str = now_utc.strftime("%Y-%m-%d")
-    recent_acq_time = (now_utc - timedelta(minutes=15)).strftime("%H%M")
+    recent_dt = now_utc - timedelta(minutes=15)
+    today_str = recent_dt.strftime("%Y-%m-%d")
+    recent_acq_time = recent_dt.strftime("%H%M")
 
     # Facility 301: Only Ground Sensors (lat=10.0, lon=10.0)
     await db.execute(
@@ -553,8 +554,9 @@ async def test_corner_trap_elimination_across_latitudes(center_lat, center_lon, 
     ]
 
     now_iso = datetime.now(timezone.utc).isoformat()
-    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    recent_acq_time = (datetime.now(timezone.utc) - timedelta(minutes=10)).strftime("%H%M")
+    recent_dt = datetime.now(timezone.utc) - timedelta(minutes=10)
+    today_str = recent_dt.strftime("%Y-%m-%d")
+    recent_acq_time = recent_dt.strftime("%H%M")
 
     for prefix, c_lat, c_lon in candidate_corners:
         # Wrap longitude if needed

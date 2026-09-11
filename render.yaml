@@ -4,8 +4,7 @@
 services:
   - type: web
     name: aetherscan-api
-    env: python
-    runtime: python-3.11.7
+    runtime: python
     region: oregon
     plan: free
     branch: master
