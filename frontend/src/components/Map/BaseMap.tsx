@@ -39,6 +39,7 @@ interface BaseMapProps {
   onClick?: (lat: number, lon: number) => void
   selectedIndustry?: any | null
   onSelectIndustry?: (industry: any | null) => void
+  mapRef?: React.RefObject<MapRef>
 }
 
 // 100% Free Basemap Styles (No API Keys Required!)
@@ -271,7 +272,8 @@ export default function BaseMap({
   onViewStateChange,
   onClick,
   selectedIndustry: externalSelectedIndustry,
-  onSelectIndustry
+  onSelectIndustry,
+  mapRef: externalMapRef,
 }: BaseMapProps) {
   const [internalViewState, setInternalViewState] = useState<MapViewState>({
     longitude: 78.9629,
@@ -303,8 +305,9 @@ export default function BaseMap({
   const [isOutsideIndia, setIsOutsideIndia] = useState(false)
   const [cursor, setCursor] = useState<string>('grab')
 
-  // Map ref for screenshot capture
-  const mapRef = useRef<MapRef>(null)
+  // Map ref for screenshot capture (uses external ref if provided from parent, or internal fallback)
+  const internalMapRef = useRef<MapRef>(null)
+  const mapRef = externalMapRef || internalMapRef
 
   const { layerData, loading: layersLoading, fetchLayerData } = useMapLayers()
 
@@ -479,6 +482,7 @@ export default function BaseMap({
     <div className="relative w-full h-full">
       <Map
         ref={mapRef}
+        preserveDrawingBuffer={true}
         {...viewState}
         onMove={handleViewStateChange}
         onClick={handleMapClick}
@@ -756,7 +760,7 @@ export default function BaseMap({
               }}
               onDownloadReport={async () => {
                 try {
-                  await generateExecutivePDF(selectedIndustry, aqiData, mapRef)
+                  await generateExecutivePDF(selectedIndustry, aqiData, mapRef, activeLayers)
                 } catch (error) {
                   console.error('Error generating PDF:', error)
                   alert('PDF generation failed. Please try again.')

@@ -3,7 +3,8 @@
 
 import { X, MapPin, Wind, Droplets, Factory, Flame, AlertTriangle, TrendingUp, TrendingDown, Activity, Download, Cloud, Thermometer, Radio, Bookmark, BarChart3, FileText, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type RefObject } from 'react'
+import type { MapRef } from 'react-map-gl/maplibre'
 import { aqiAPI } from '@/lib/api'
 import { Button } from '@/components/UI/button'
 import { Badge } from '@/components/UI/badge'
@@ -57,6 +58,8 @@ interface DataPanelProps {
     station?: StationInfo
   } | null
   onClose: () => void
+  mapRef?: RefObject<MapRef>
+  activeLayers?: string[]
 }
 
 const pollutantConfig = [
@@ -145,7 +148,7 @@ function normalizeForecast(forecastData: any): ForecastDay[] {
   return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date))
 }
 
-export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
+export default function UnifiedDataPanel({ data, onClose, mapRef, activeLayers }: DataPanelProps) {
   const [forecast, setForecast] = useState<ForecastDay[]>([])
   const [loadingForecast, setLoadingForecast] = useState(false)
   const [isBookmarked, setIsBookmarked] = useState(false)
@@ -262,7 +265,7 @@ export default function UnifiedDataPanel({ data, onClose }: DataPanelProps) {
         longitude: data.longitude,
         timestamp: new Date().toISOString(),
       }
-      await generateExecutivePDF(industryInfo, cleanAQIData as any, null)
+      await generateExecutivePDF(industryInfo, cleanAQIData as any, mapRef, activeLayers)
     } catch (err) {
       console.error('Failed to generate PDF:', err)
       alert('Failed to generate PDF report. Please try again.')

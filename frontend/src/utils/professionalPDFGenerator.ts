@@ -26,7 +26,7 @@ import {
   cleanDataForPDF,
   type AQIData,
 } from './dataValidator'
-import { captureMapCanvas } from './mapExportUtils'
+import { captureMapCanvas, captureAuditedAreaMap } from './mapExportUtils'
 
 // PROFESSIONAL LAYOUT CONSTANTS (A4 Dimensions in mm)
 const PAGE_WIDTH = 210
@@ -960,7 +960,8 @@ async function renderPage4Directives(
 export async function generateExecutivePDF(
   industry: IndustryData,
   aqiData: AQIData | null,
-  mapRef?: RefObject<MapRef> | null
+  mapRef?: RefObject<MapRef> | null,
+  activeLayers?: string[]
 ): Promise<void> {
   console.log('=== INITIATING AETHERSCAN 4-PAGE EXECUTIVE DOSSIER GENERATION ===')
 
@@ -977,17 +978,28 @@ export async function generateExecutivePDF(
       console.log(`✓ Telemetry validated (DQS: ${dqsScore}%)`)
     }
 
-    // 1. Capture Map Canvas
+    // 1. Capture Map Canvas or Generate High-Resolution Satellite & Telemetry Composite
     let mapImage: string | null = null
-    if (mapRef?.current) {
-      try {
-        console.log('Capturing geospatial map canvas...')
-        mapImage = await captureMapCanvas(mapRef, 800, 480)
-        console.log('✓ Map canvas captured successfully')
-      } catch (err) {
-        console.warn('Map canvas capture skipped:', err)
-        mapImage = null
-      }
+    try {
+      console.log(`Capturing audited area map for: ${industry.name} (${industry.latitude.toFixed(4)}°N, ${industry.longitude.toFixed(4)}°E)...`)
+      mapImage = await captureAuditedAreaMap(
+        {
+          latitude: industry.latitude,
+          longitude: industry.longitude,
+          name: industry.name,
+          type: industry.type,
+          state: industry.state,
+          district: industry.district,
+          capacity: industry.capacity,
+        },
+        aqiData,
+        mapRef,
+        activeLayers
+      )
+      console.log('✓ Geospatial audit map captured successfully')
+    } catch (err) {
+      console.warn('Geospatial capture fallback triggered:', err)
+      mapImage = null
     }
 
     // 2. Render Page 1: Institutional Executive Cover

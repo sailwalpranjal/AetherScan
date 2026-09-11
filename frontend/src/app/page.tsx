@@ -1,7 +1,8 @@
 // AetherScan - Professional Responsive Layout
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import type { MapRef } from 'react-map-gl/maplibre'
 import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Layers, X, Search as SearchIcon, BookmarkIcon, BarChart3, Keyboard } from 'lucide-react'
@@ -68,6 +69,9 @@ const ShortcutItem = ({ label, keys }: { label: string; keys: string }) => (
 )
 
 export default function Home() {
+  // Map reference for screenshot capture and camera control
+  const mapRef = useRef<MapRef>(null)
+
   // Loading state
   const [isPageLoading, setIsPageLoading] = useState(true)
 
@@ -337,7 +341,7 @@ export default function Home() {
         }
       }
 
-      await generateExecutivePDF(targetFacility, targetAQI as any, null)
+      await generateExecutivePDF(targetFacility, targetAQI as any, mapRef, activeLayers)
     } catch (error) {
       console.error('Error generating global PDF dossier:', error)
       alert('Failed to generate PDF report. Please try again.')
@@ -416,6 +420,7 @@ export default function Home() {
       {/* Map - Full Screen */}
       <div className="absolute inset-0 pt-14 sm:pt-16">
         <BaseMap
+          mapRef={mapRef}
           activeLayers={activeLayers}
           layerOpacity={layerOpacity}
           timeRange={timeRange}
@@ -536,6 +541,8 @@ export default function Home() {
               <UnifiedDataPanel
                 data={selectedLocation}
                 onClose={() => setSelectedLocation(null)}
+                mapRef={mapRef}
+                activeLayers={activeLayers}
               />
             </motion.div>
           )}
