@@ -27,12 +27,40 @@ def _get_fallback_validation_data() -> List[Dict]:
 
 async def get_aqi_validation() -> Dict:
     """Validate AQI with fire correlation using real measurements and FIRMS data."""
+    cache_key = "aqi_validation"
+    cached = get_cached_layer(cache_key)
+    if cached:
+        return cached
+
+    import asyncio
     features = []
     source = 'None'
 
     try:
         measurements = await openaq_loader.fetch_latest_measurements(country='IN')
-        fires = await nasa_firms_loader.fetch_active_fires(days=1)
+
+        # Try SQLite for fires first (instant)
+        fires = []
+        try:
+            await db_manager.initialize()
+            fire_rows = await db_manager.fetch_all(
+                "SELECT latitude, longitude, frp FROM nasa_firms_fires LIMIT 200"
+            )
+            if fire_rows:
+                fires = [
+                    {'latitude': r['latitude'], 'longitude': r['longitude'], 'frp': r.get('frp', 0.0)}
+                    for r in fire_rows
+                ]
+        except Exception as db_err:
+            logger.debug(f"DB fires fetch: {db_err}")
+
+        # Fallback to bounded live FIRMS call if DB has none
+        if not fires:
+            try:
+                fires = await asyncio.wait_for(nasa_firms_loader.fetch_active_fires(days=1), timeout=2.5)
+            except Exception as firms_err:
+                logger.debug(f"FIRMS live fetch: {firms_err}")
+                fires = []
 
         if measurements and fires:
             # Find stations near fire points - Return as GeoJSON
@@ -99,12 +127,15 @@ async def get_aqi_validation() -> Dict:
     except Exception as e:
         logger.warning(f"AQI validation error: {e}")
 
-    logger.info(f"Generated {len(features)} AQI validation points from {source}")
-
-    return {
+    result = {
         'type': 'FeatureCollection',
         'features': features,
         'count': len(features),
         'source': source,
         'description': 'AQI validation with fire detection correlation'
     }
+    if features:
+        set_cached_layer(cache_key, result)
+
+    logger.info(f"Generated {len(features)} AQI validation points from {source}")
+    return result

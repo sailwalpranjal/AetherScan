@@ -19,11 +19,13 @@ class GlobalPowerPlantLoader:
     def __init__(self):
         self.cache_dir = Path(settings.DATA_CACHE_DIR) / "power_plants"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self.csv_file = self.cache_dir / "global_power_plant_database.csv"
+        self.bundled_file = Path(settings.BUNDLED_DATA_DIR) / "power_plants" / "global_power_plant_database.csv"
+        self.csv_file = self.bundled_file if self.bundled_file.exists() else (self.cache_dir / "global_power_plant_database.csv")
+        self._cached_plants: Optional[List[Dict]] = None
 
     def is_data_available(self) -> bool:
         """Check if data file exists"""
-        return self.csv_file.exists()
+        return (self.csv_file and self.csv_file.exists()) or (self.bundled_file and self.bundled_file.exists())
 
     def load_india_power_plants(self) -> List[Dict]:
         """
@@ -31,16 +33,20 @@ class GlobalPowerPlantLoader:
         Returns:
             List of power plant dictionaries
         """
-        if not self.is_data_available():
+        if self._cached_plants is not None:
+            return self._cached_plants
+
+        target_file = self.bundled_file if (self.bundled_file and self.bundled_file.exists()) else self.csv_file
+        if not target_file or not target_file.exists():
             print(f"[ERROR] Global Power Plant Database not found!")
-            print(f"Expected location: {self.csv_file}")
+            print(f"Expected location: {target_file}")
             print(f"Download from: https://wri-dataportal-prod.s3.amazonaws.com/manual/global_power_plant_database_v_1_3.zip")
             print(f"Extract 'global_power_plant_database.csv' to: {self.cache_dir}")
             return self._get_sample_data()
 
         try:
-            print(f"[INFO] Loading Global Power Plant Database...")
-            df = pd.read_csv(self.csv_file, low_memory=False)
+            print(f"[INFO] Loading Global Power Plant Database from {target_file}...")
+            df = pd.read_csv(target_file, low_memory=False)
 
             # Filter for India
             india_df = df[df['country'] == 'IND'].copy()
@@ -91,6 +97,7 @@ class GlobalPowerPlantLoader:
                             plants.append(plant)
 
             print(f"[OK] Loaded {len(plants)} power plants with valid coordinates")
+            self._cached_plants = plants
             return plants
 
         except Exception as e:

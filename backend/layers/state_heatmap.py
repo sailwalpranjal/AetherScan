@@ -2,10 +2,13 @@
 State-wise Pollution Heatmap Layer
 Aggregates pollution data by state boundaries
 """
-from typing import Dict, List
+from typing import Dict, List, Optional
 import logging
+import asyncio
 from data_sources.openaq_loader import openaq_loader
 from core.aqi_calculator import aqi_calculator
+from db.database import db_manager
+from services.data_sync import get_cached_layer, set_cached_layer
 
 logger = logging.getLogger(__name__)
 
@@ -126,16 +129,23 @@ async def get_state_wise_pollution() -> Dict:
     Returns:
         Dict with state-level pollution data
     """
-    import asyncio
+    cache_key = "state_heatmap"
+    cached = get_cached_layer(cache_key)
+    if cached:
+        return cached
+
     from data_sources.aqicn_service import get_aqicn_service
 
     features = []
     state_data = {}
     data_source = 'None'
 
-    # Try OpenAQ first
+    # Try OpenAQ first (fast: checks local DB first via openaq_loader in <2ms)
     try:
-        measurements = await openaq_loader.fetch_latest_measurements(country='IN')
+        measurements = await asyncio.wait_for(
+            openaq_loader.fetch_latest_measurements(country='IN'),
+            timeout=2.5
+        )
 
         if measurements:
             for measure in measurements:
@@ -157,36 +167,50 @@ async def get_state_wise_pollution() -> Dict:
                 data_source = 'OpenAQ'
                 logger.info(f"OpenAQ: Found data for {len(state_data)} states")
     except Exception as e:
-        logger.warning(f"OpenAQ error: {e}")
+        logger.warning(f"OpenAQ error or timeout: {e}")
 
     # If OpenAQ didn't provide enough data, supplement with AQICN
     if len(state_data) < 10:
         try:
             aqicn_service = get_aqicn_service()
             if aqicn_service:
-                # Query major cities for each state
+                async def fetch_city_aqi(s_name: str, c_name: str):
+                    try:
+                        res = await asyncio.wait_for(aqicn_service.get_aqi_by_city_name(c_name), timeout=2.0)
+                        if res and 'aqi' in res:
+                            val = res['aqi']
+                            if val != '-' and isinstance(val, (int, float)):
+                                return s_name, int(val)
+                    except Exception:
+                        pass
+                    return s_name, None
+
+                tasks = []
                 for state_name, state_info in STATE_DATA.items():
                     if state_name in state_data and len(state_data[state_name]) >= 2:
-                        continue  # Already have data for this state
-
-                    # Try first city for this state
+                        continue
                     cities = state_info.get('cities', [])
                     if cities:
-                        try:
-                            result = await aqicn_service.get_aqi_by_city_name(cities[0])
-                            if result and 'aqi' in result:
-                                aqi_val = result['aqi']
-                                if aqi_val != '-' and isinstance(aqi_val, (int, float)):
-                                    if state_name not in state_data:
-                                        state_data[state_name] = {}
-                                    state_data[state_name]['pm25'] = [aqi_val * 0.5]
-                                    state_data[state_name]['aqi_direct'] = [int(aqi_val)]
-                            await asyncio.sleep(0.01)  # Rate limiting
-                        except Exception:
-                            continue
+                        tasks.append(fetch_city_aqi(state_name, cities[0]))
 
-                if len(state_data) > 10:
-                    data_source = 'OpenAQ + AQICN'
+                if tasks:
+                    try:
+                        city_results = await asyncio.wait_for(
+                            asyncio.gather(*tasks, return_exceptions=True),
+                            timeout=3.0
+                        )
+                    except Exception:
+                        city_results = []
+                    for item in city_results:
+                        if isinstance(item, tuple) and item[1] is not None:
+                            s_name, aqi_val = item
+                            if s_name not in state_data:
+                                state_data[s_name] = {}
+                            state_data[s_name]['pm25'] = [aqi_val * 0.5]
+                            state_data[s_name]['aqi_direct'] = [aqi_val]
+
+                    if len(state_data) > 0:
+                        data_source = 'OpenAQ + AQICN' if data_source == 'OpenAQ' else 'AQICN'
         except Exception as e:
             logger.warning(f"AQICN error: {e}")
 
@@ -251,12 +275,14 @@ async def get_state_wise_pollution() -> Dict:
     if not features:
         data_source = 'None'
 
-    logger.info(f"Returning {len(features)} state pollution aggregations from {data_source}")
-
-    return {
+    result = {
         'type': 'FeatureCollection',
         'features': features,
         'count': len(features),
         'source': data_source,
         'description': 'State-wise pollution aggregation with AQI'
     }
+    if features:
+        set_cached_layer(cache_key, result)
+
+    return result

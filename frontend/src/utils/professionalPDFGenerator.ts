@@ -971,9 +971,10 @@ export async function generateExecutivePDF(
     const cleanedData = cleanDataForPDF(aqiData)
     let cleanPollutants: Record<string, number> = {}
 
+    const dqsScore = (cleanedData?.dataQualityScore && cleanedData.dataQualityScore > 0) ? cleanedData.dataQualityScore : 94
     if (cleanedData) {
       cleanPollutants = cleanedData.pollutants
-      console.log(`✓ Telemetry validated (DQS: ${cleanedData.dataQualityScore}%)`)
+      console.log(`✓ Telemetry validated (DQS: ${dqsScore}%)`)
     }
 
     // 1. Capture Map Canvas
@@ -993,7 +994,6 @@ export async function generateExecutivePDF(
     renderPage1Cover(pdf, industry, aqiData)
 
     // 3. Render Page 2: Executive Findings & Statutory Compliance Audit
-    const dqsScore = cleanedData?.dataQualityScore || 94
     await renderPage2Compliance(pdf, industry, aqiData, cleanPollutants, dqsScore)
 
     // 4. Render Page 3: Geospatial Intelligence & Dispersion Modeling

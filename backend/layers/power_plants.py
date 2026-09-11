@@ -1,8 +1,10 @@
-"""Power Plants Layer - REAL DATA FROM MULTIPLE SOURCES"""
-from typing import Dict
+import asyncio
+from typing import Dict, Optional
 from data_sources.global_power_plant_loader import global_power_plant_loader
 from data_sources.osm_overpass_loader import osm_overpass_loader
 from config.settings import settings
+
+_CACHED_POWER_PLANTS_GEOJSON: Optional[Dict] = None
 
 async def get_power_plants() -> Dict:
     """
@@ -15,6 +17,10 @@ async def get_power_plants() -> Dict:
     Returns:
         GeoJSON FeatureCollection with all power plants
     """
+    global _CACHED_POWER_PLANTS_GEOJSON
+    if _CACHED_POWER_PLANTS_GEOJSON is not None:
+        return _CACHED_POWER_PLANTS_GEOJSON
+
     # Try Global Power Plant Database first (best source)
     plants_gppd = global_power_plant_loader.load_india_power_plants()
 
@@ -68,17 +74,26 @@ async def get_power_plants() -> Dict:
 
         print(f"[OK] Filtered to {len(features)} India power plants")
 
-        return {
+        result = {
             'type': 'FeatureCollection',
             'features': features,
             'count': len(features),
             'source': 'Global Power Plant Database (WRI)',
             'url': 'https://datasets.wri.org/dataset/globalpowerplantdatabase'
         }
+        _CACHED_POWER_PLANTS_GEOJSON = result
+        return result
 
-    # Fallback to OpenStreetMap
+    # Fallback to OpenStreetMap (bounded timeout)
     print("[WARN] GPPD not available, using OpenStreetMap...")
-    plants_osm = await osm_overpass_loader.fetch_power_plants(bounds=settings.INDIA_BOUNDS)
+    try:
+        plants_osm = await asyncio.wait_for(
+            osm_overpass_loader.fetch_power_plants(bounds=settings.INDIA_BOUNDS),
+            timeout=3.0
+        )
+    except Exception as e:
+        print(f"[WARN] OSM fetch error or timeout: {e}")
+        plants_osm = []
 
     features = []
     for plant in plants_osm:

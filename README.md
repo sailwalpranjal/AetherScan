@@ -1,6 +1,6 @@
 # AetherScan - Environmental Intelligence Platform
 
-A production-grade environmental monitoring platform providing real-time air quality analysis, satellite data visualization, and research-grade PDF report generation. Integrates multiple data sources with quantum-enhanced processing capabilities.
+A production environmental monitoring platform providing real-time air quality analysis, multi-satellite data visualization, and executive compliance report generation. Integrates verified environmental telemetry with classical and quantum-inspired algorithmic benchmarks.
 
 **Technology Stack:** Next.js 14, FastAPI, IBM Qiskit, MapLibre GL JS
 
@@ -284,16 +284,17 @@ Multiple Data Sources (Superposition Input)
 
 ### Data Sources
 
-| Source | Type | Volume | Update Frequency |
-|--------|------|--------|------------------|
-| AQICN | Air Quality | 10,000+ stations | Hourly |
-| OpenAQ | Air Quality | 12,000+ locations | Real-time |
-| NASA OMI | Satellite NO₂/SO₂ | Global coverage | Daily |
-| NASA VIIRS | AOD, Temperature | Global coverage | Daily |
-| NASA FIRMS | Active fires | Near real-time | 3-hourly |
-| Bhuvan WMS | ISRO Imagery | India coverage | Variable |
-| WRI | Power Plants | 1,589 facilities | Static |
-| OSM | Infrastructure | Updated continuously | Real-time |
+| Source | Type | Parameters / Scope | Update Frequency | Authentication |
+|--------|------|---------------------|------------------|----------------|
+| **OpenAQ v3** | Continuous Ambient Monitoring | Ground-truth PM2.5, PM10, NO₂, SO₂, CO, O₃ across India | Real-time | API Key / Public |
+| **Copernicus ECMWF / CAMS** | Atmospheric Composition Models | Boundary-layer PM2.5, PM10, AOD, trace gases via Open-Meteo & CDSE Sentinel-5P | Hourly / Daily | Free Tier (No Key) |
+| **AQICN / WAQI** | Global Monitoring Stations | CPCB / SPCB network feeds & direct AQI values across major metros | Hourly | Public Token |
+| **NASA FIRMS** | Thermal Anomaly Satellites | VIIRS (S-NPP, NOAA-20/21) & MODIS active fire hotspots (FRP, brightness) | 3-hourly | Map Key |
+| **NASA POWER & OMI** | Earth Observation Products | Solar radiation, wind climate (u/v vectors), tropospheric NO₂ & SO₂ | Daily / Climatology | Free Public API |
+| **ISRO Bhuvan (NRSC)** | Indian Remote Sensing | Aerosol Optical Depth (AOD) & land surface WMS imagery | Periodic / On-demand | Public OGC WMS |
+| **WRI GPPD** | Industrial Infrastructure | 1,589 thermal, hydro, nuclear, and renewable plants in India | Curated Static Registry | Bundled Open Data |
+| **WorldPop & Census** | Population Exposure | High-resolution gridded population density (100m) & demographic vulnerability | Decennial / Modeled | Open Geospatial |
+| **OpenStreetMap** | Industrial Topography | Heavy refineries, industrial complexes, and road corridors | Continuously updated | Overpass API |
 
 ---
 
@@ -465,14 +466,13 @@ AetherScan/
 - Exposure Risk Assessment
 - Demographic Analysis
 
-### 4. Research-Grade PDF Reports & Executive Forensic Dossiers
+### 4. Executive Environmental Compliance Dossiers
 - **4-Page Institutional Executive Dossier (`professionalPDFGenerator.ts`):** 
-  - Page 1: Institutional Executive Cover, cryptographic hash, and metadata.
+  - Page 1: Institutional Executive Cover, cryptographic hash, and station metadata.
   - Page 2: CPCB NAAQS statutory compliance audit, exceedance ratios, and Data Quality Score (DQS) breakdown.
-  - Page 3: Geospatial intelligence map capture, wind vector telemetry, and dispersion models.
-  - Page 4: Thermal hotspot correlation, mitigation directives, and forensic sign-off.
-  - Zero-warning table auto-layout eliminating jsPDF overflow.
-- **Full Comprehensive Reports (20-30 pages):** Multi-section environmental impact audit covering 12 analytical sections with meteorological and historical trends.
+  - Page 3: Geospatial intelligence map capture, wind vector telemetry, and atmospheric dispersion models.
+  - Page 4: Thermal hotspot correlation, mitigation directives, and verification sign-off.
+  - Formatted auto-layout eliminating jsPDF overflow and rendering crisp vectors.
 
 ### 5. Advanced Meteorological Analysis
 - Wind rose diagrams (8-directional)

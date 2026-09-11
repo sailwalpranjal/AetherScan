@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # Cache
     TILE_CACHE_DIR: str = "/tmp/tiles" if os.environ.get("VERCEL") or os.environ.get("RENDER") else "./cache/tiles"
     DATA_CACHE_DIR: str = "/tmp/data" if os.environ.get("VERCEL") or os.environ.get("RENDER") else str(Path(__file__).parent.parent / "cache" / "data")
+    BUNDLED_DATA_DIR: str = str(Path(__file__).parent.parent / "cache" / "data")
     CACHE_EXPIRY_HOURS: int = 24
 
     # API Settings

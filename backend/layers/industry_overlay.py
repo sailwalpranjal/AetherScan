@@ -1,9 +1,10 @@
-"""Industry vs Pollution Overlay Layer - USES GLOBAL POWER PLANT DATABASE"""
-from typing import Dict
+from typing import Dict, Optional
 from data_sources.global_power_plant_loader import global_power_plant_loader
 from data_sources.osm_overpass_loader import osm_overpass_loader
 from config.settings import settings
 import asyncio
+
+_CACHED_INDUSTRY_OVERLAY: Optional[Dict] = None
 
 async def get_industry_overlay() -> Dict:
     """
@@ -15,6 +16,10 @@ async def get_industry_overlay() -> Dict:
     Returns:
         GeoJSON FeatureCollection with all industries
     """
+    global _CACHED_INDUSTRY_OVERLAY
+    if _CACHED_INDUSTRY_OVERLAY is not None:
+        return _CACHED_INDUSTRY_OVERLAY
+
     try:
         # Use Global Power Plant Database (RELIABLE - no API calls)
         plants_gppd = global_power_plant_loader.load_india_power_plants()
@@ -52,7 +57,7 @@ async def get_industry_overlay() -> Dict:
         try:
             refineries = await asyncio.wait_for(
                 osm_overpass_loader.fetch_refineries(bounds=settings.INDIA_BOUNDS),
-                timeout=10.0  # 10 second timeout
+                timeout=2.0  # 2 second timeout max
             )
 
             for refinery in refineries:
@@ -93,13 +98,15 @@ async def get_industry_overlay() -> Dict:
 
         print(f"[OK] Total industries: {len(features)} (power plants + refineries)")
 
-        return {
+        result = {
             'type': 'FeatureCollection',
             'features': features,
             'count': len(features),
             'source': 'Global Power Plant Database (WRI) + OpenStreetMap',
             'url': 'https://datasets.wri.org/dataset/globalpowerplantdatabase'
         }
+        _CACHED_INDUSTRY_OVERLAY = result
+        return result
 
     except Exception as e:
         print(f"[ERROR] Error fetching industries: {e}")

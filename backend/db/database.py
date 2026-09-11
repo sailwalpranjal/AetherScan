@@ -90,6 +90,20 @@ async def init_db(engine_override=None):
         raise
 
 
+def dict_row_factory(cursor, row):
+    """
+    Row factory allowing dictionary access (.get, ["col"])
+    as well as tuple indexing ([0]) on SQLite rows.
+    """
+    d = {col[0]: val for col, val in zip(cursor.description, row)}
+    class RowDict(dict):
+        def __getitem__(self, key):
+            if isinstance(key, int):
+                return row[key]
+            return super().__getitem__(key)
+    return RowDict(d)
+
+
 class DatabaseManager:
     """
     Backwards-compatibility singleton database manager.
@@ -120,7 +134,7 @@ class DatabaseManager:
                 Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
 
             self._db = await aiosqlite.connect(self._db_path)
-            self._db.row_factory = aiosqlite.Row
+            self._db.row_factory = dict_row_factory
 
             if str(self._db_path) != ":memory:":
                 await self._db.execute("PRAGMA journal_mode=WAL;")
@@ -243,8 +257,11 @@ class DatabaseManager:
             return
         try:
             row = await self.fetch_one("SELECT count(*) as cnt FROM industries")
-            if row and row["cnt"] > 0:
+            if row and row["cnt"] > 3:
                 return
+
+            if row and row["cnt"] > 0:
+                await self.execute("DELETE FROM industries")
 
             try:
                 from data_sources.global_power_plant_loader import global_power_plant_loader

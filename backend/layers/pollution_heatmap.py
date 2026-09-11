@@ -26,6 +26,15 @@ async def get_national_pollution_heatmap(
     if cached:
         return cached
 
+    aqicn_service = get_aqicn_service()
+    if not aqicn_service:
+        return {
+            'type': 'heatmap',
+            'data': [],
+            'source': 'None',
+            'sensor_count': 0
+        }
+
     sensor_data = []
     source = 'OpenAQ'
 

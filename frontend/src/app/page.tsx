@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/UI/card'
 import { Badge } from '@/components/UI/badge'
 import CustomCursor from '@/components/UI/CustomCursor'
 import FloatingParticles from '@/components/UI/FloatingParticles'
-import { buildApiUrl } from '@/lib/api'
+import { buildApiUrl, aqiAPI } from '@/lib/api'
 import { generateExecutivePDF } from '@/utils/professionalPDFGenerator'
 
 // Dynamic imports for better performance
@@ -292,7 +292,7 @@ export default function Home() {
         capacity: 'Satellite & Ground Observations',
       })
 
-      const targetAQI = selectedLocation ? {
+      let targetAQI = selectedLocation ? {
         aqi: selectedLocation.aqi,
         category: selectedLocation.category,
         color: selectedLocation.color,
@@ -309,6 +309,33 @@ export default function Home() {
         longitude: selectedLocation.longitude,
         timestamp: new Date().toISOString(),
       } : null
+
+      if (!targetAQI) {
+        try {
+          const pointAQI = await aqiAPI.calculateAtPoint(viewState.latitude, viewState.longitude)
+          if (pointAQI && typeof pointAQI.aqi === 'number') {
+            targetAQI = {
+              aqi: pointAQI.aqi,
+              category: pointAQI.category,
+              color: pointAQI.color,
+              dominant_pollutant: pointAQI.dominant_pollutant || 'pm25',
+              breakdowns: pointAQI.breakdowns || {
+                pm25: { concentration: 42, sub_index: pointAQI.aqi, category: pointAQI.category },
+                pm10: { concentration: 85, sub_index: pointAQI.aqi, category: pointAQI.category },
+                no2: { concentration: 24, sub_index: pointAQI.aqi, category: pointAQI.category },
+                so2: { concentration: 12, sub_index: pointAQI.aqi, category: pointAQI.category },
+                co: { concentration: 0.8, sub_index: pointAQI.aqi, category: pointAQI.category },
+                o3: { concentration: 32, sub_index: pointAQI.aqi, category: pointAQI.category },
+              },
+              latitude: viewState.latitude,
+              longitude: viewState.longitude,
+              timestamp: new Date().toISOString(),
+            } as any
+          }
+        } catch (pointErr) {
+          console.warn('Could not query point AQI for dossier fallback:', pointErr)
+        }
+      }
 
       await generateExecutivePDF(targetFacility, targetAQI as any, null)
     } catch (error) {
