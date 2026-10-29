@@ -1,5 +1,8 @@
 # AetherScan - Environmental Intelligence Platform
 
+[![tests](https://github.com/sailwalpranjal/AetherScan/actions/workflows/ci.yml/badge.svg)](https://github.com/sailwalpranjal/AetherScan/actions/workflows/ci.yml)
+[![licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+
 An air-quality analytics platform that combines ground sensors, satellite products and geospatial layers behind one FastAPI backend and a Next.js map front end. It also generates compliance-style PDF reports and includes a quantum-circuit module that runs on a simulator only. Built by a team of four as a university project; it has not been deployed for or used by any outside organisation that I can document.
 
 **Technology Stack:** Next.js 14, FastAPI, IBM Qiskit, MapLibre GL JS
@@ -14,6 +17,22 @@ An air-quality analytics platform that combines ground sensors, satellite produc
 - Frontend runtime target: Node.js 18+ recommended for Next.js 14.
 - Quantum endpoints are optional. They are enabled when Qiskit is installed successfully; the rest of the platform still runs without them.
 - When external API keys are unavailable, the app uses graceful fallbacks where possible so the core map and AQI workflows still remain usable for development and demos.
+
+## Who it is for, and what it does not do
+
+It is for an analyst or student who wants to look at air quality for a place across several public sources at once, and see where each number came from and how fresh it is. Every data source sits in one registry with its licence, rate limit and provenance, and every observation gets a quality score. When a source fails the app says "unavailable"; it does not fill the gap.
+
+It is not a forecasting tool, it gives no health advice, and the quantum module is a simulator demonstration with no speed-up claimed. Fused values have not been validated against independent ground truth (`docs/LIMITATIONS.md`).
+
+## Demo
+
+> Screenshot placeholder. To capture: run the stack (see Setup Instructions), open `http://localhost:3000`, search for a city, switch on the NO2 and fire layers, and save a 1440x900 screenshot as `docs/img/map.png`. For a GIF, record about 10 seconds of toggling layers with ScreenToGif at 12 fps and save it as `docs/img/layers.gif`.
+
+## Product thinking
+
+- [PRD](docs/product/PRD.md), [roadmap](docs/product/ROADMAP.md) (RICE and ICE arithmetic), [decision log](docs/product/DECISIONS.md), [metrics plan](docs/product/METRICS.md)
+- [Changelog](CHANGELOG.md), [project board setup](docs/project-board.md), [issue drafts](docs/issues/)
+- [Where the older reports disagree with the code](docs/DOC_AUDIT.md)
 
 ---
 
@@ -1310,7 +1329,7 @@ Solution: Ensure all data is loaded before generating PDF
 
 ## License
 
-Educational and research use. Ensure compliance with data source terms of service.
+MIT, see [LICENSE](LICENSE). The data providers have their own terms; see `docs/DATA_SOURCE_REGISTRY.md`.
 
 ## Acknowledgments
 
