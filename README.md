@@ -1,15 +1,37 @@
 # AetherScan - Environmental Intelligence Platform
 
-A production environmental monitoring platform providing real-time air quality analysis, multi-satellite data visualization, and executive compliance report generation. Integrates verified environmental telemetry with classical and quantum-inspired algorithmic benchmarks.
+[![tests](https://github.com/sailwalpranjal/AetherScan/actions/workflows/ci.yml/badge.svg)](https://github.com/sailwalpranjal/AetherScan/actions/workflows/ci.yml)
+
+An air-quality analytics platform that combines ground sensors, satellite products and geospatial layers behind one FastAPI backend and a Next.js map front end. It also generates compliance-style PDF reports and includes a quantum-circuit module that runs on a simulator only. Built by a team of four as a university project; it has not been deployed for or used by any outside organisation that I can document.
 
 **Technology Stack:** Next.js 14, FastAPI, IBM Qiskit, MapLibre GL JS
 
 ## Current Status
 
+- Database: SQLite (async, via aiosqlite) is what the code uses today. PostgreSQL is planned, not implemented; see `docs/ISSUES.md`.
+- Access log: the database guard keeps its access log in memory (last 1,000 entries) and loses it on restart. There is no audit table.
+- Concurrency: the backend is `async` for I/O. A `ProcessPoolExecutor` is created in `backend/quantum/processor.py` but no work is submitted to it, and IDW interpolation runs in-process.
+- Tests: `pytest` under `backend/tests` gives 232 passed, 2 skipped with external APIs mocked (run from the repo root with `PYTHONPATH=.`).
 - Backend runtime target: Python 3.11. The backend dependencies and deployment files are configured for `python-3.11.x`.
 - Frontend runtime target: Node.js 18+ recommended for Next.js 14.
 - Quantum endpoints are optional. They are enabled when Qiskit is installed successfully; the rest of the platform still runs without them.
 - When external API keys are unavailable, the app uses graceful fallbacks where possible so the core map and AQI workflows still remain usable for development and demos.
+
+## Who it is for, and what it does not do
+
+It is for an analyst or student who wants to look at air quality for a place across several public sources at once, and see where each number came from and how fresh it is. Every data source sits in one registry with its licence, rate limit and provenance, and every observation gets a quality score. When a source fails the app says "unavailable"; it does not fill the gap.
+
+It is not a forecasting tool, it gives no health advice, and the quantum module is a simulator demonstration with no speed-up claimed. Fused values have not been validated against independent ground truth (`docs/LIMITATIONS.md`).
+
+## Demo
+
+> Screenshot placeholder. To capture: run the stack (see Setup Instructions), open `http://localhost:3000`, search for a city, switch on the NO2 and fire layers, and save a 1440x900 screenshot as `docs/img/map.png`. For a GIF, record about 10 seconds of toggling layers with ScreenToGif at 12 fps and save it as `docs/img/layers.gif`.
+
+## Product thinking
+
+- [PRD](docs/product/PRD.md), [roadmap](docs/product/ROADMAP.md) (RICE and ICE arithmetic), [decision log](docs/product/DECISIONS.md), [metrics plan](docs/product/METRICS.md)
+- [Changelog](CHANGELOG.md), [project board setup](docs/project-board.md), [issue drafts](docs/issues/)
+- [Where the older reports disagree with the code](docs/DOC_AUDIT.md)
 
 ---
 
@@ -82,7 +104,7 @@ A production environmental monitoring platform providing real-time air quality a
 │  │                                                              │      │
 │  │  - Token-based Access Control                              │      │
 │  │  - API-only Database Access                                │      │
-│  │  - Comprehensive Audit Logging                             │      │
+│  │  - In-memory Access Log (last 1,000 entries)               │      │
 │  │  - Violation Detection & Blocking                          │      │
 │  └─────────────────────────────────────────────────────────────┘      │
 │           │                                                            │
@@ -402,7 +424,6 @@ AetherScan/
 │   └── validate_quantum_simple.py     # Quick validation
 │
 ├── README.md                          # This file
-└── WORK_DISTRIBUTION.md               # Team contributions
 ```
 
 **Total Project Statistics:**
@@ -435,7 +456,7 @@ AetherScan/
   - Bell state entanglement for correlation analysis
 - Statevector simulation
 - Real quantum gates: Hadamard, CNOT, Multi-controlled Toffoli
-- 600+ lines of production quantum code
+- Simulator-only: no quantum hardware is used and no speed-up is claimed
 
 ### 3. 26 Environmental Data Layers
 **Pollution Layers:**
@@ -483,7 +504,7 @@ AetherScan/
 ### 6. Security Features
 - Token-based database access control
 - API-only database interaction
-- Comprehensive audit logging
+- In-memory access log of token validations (not persisted)
 - Violation detection and blocking
 - Access token expiration (60s TTL)
 
@@ -681,7 +702,7 @@ npm start
 2. **View Map:** Interactive map loads with default layers
 3. **Add Layers:** Click layer controls to toggle environmental data
 4. **Search Location:** Use search bar to find specific areas
-5. **Generate PDF:** Click "Generate Report" for comprehensive analysis
+5. **Generate PDF:** Click "Generate Report" for the full analysis
 
 ### API Documentation
 
@@ -782,7 +803,7 @@ cd backend
 python run_quantum_validation.py
 ```
 
-This executes comprehensive tests:
+This runs the full set of checks:
 1. Superposition processing with 4 data sources
 2. Entanglement analysis on 4 parameters
 3. Grover's search on 4 candidates
@@ -1136,7 +1157,7 @@ cd backend
 cd backend
 ./venv/Scripts/python.exe validate_quantum_simple.py
 
-# Comprehensive validation (4 quantum algorithms)
+# Full validation (4 quantum algorithms)
 cd backend
 ./venv/Scripts/python.exe run_quantum_validation.py
 ```
@@ -1214,41 +1235,18 @@ http://localhost:8000/quantum/health
 | GPU | Not required | Not used |
 | OS | Windows 10/11, Ubuntu 20.04+, macOS 11+ | Any 64-bit OS |
 
-### Performance Metrics
+### Performance
 
-| Operation | Target | Achieved |
-|-----------|--------|----------|
-| Layer Rendering | < 2s | 1.2s average |
-| AQI Calculation | < 500ms | 287ms average |
-| PDF Generation | < 30s | 15-20s |
-| Quantum Circuit Execution | < 200ms | 87ms average |
-| Map Tile Generation | < 1s | 0.4s average |
-| API Response Time | < 1s | 0.6s average |
+I do not have a reproducible benchmark for end-to-end latency, tile generation or concurrent users, so this README no longer quotes any. An earlier version listed "achieved" timings, a quantum "speedup" table and a 50-user test; none of those came from a script in this repository.
 
-### Quantum Processing Performance
-
-| Algorithm | Classical | Quantum-Inspired | Speedup |
-|-----------|-----------|------------------|---------|
-| 4-source data fusion | 4 × 150ms | 87ms | 6.9x |
-| 8-source data fusion | 8 × 150ms | 124ms | 9.7x |
-| Correlation analysis | 850ms | 143ms | 5.9x |
-| Optimal selection | 640ms | 95ms | 6.7x |
-
-### Scalability
-
-- **Concurrent Users:** Tested up to 50 simultaneous users
-- **Data Volume:** Handles 10,000+ monitoring stations
-- **Tile Caching:** 1GB cache reduces repeat requests by 85%
-- **API Rate Limits:** Configurable, default 100 requests/minute
+What is measured and reproducible: `backend/run_quantum_validation.py` and the benchmark section above report simulator latency for the four quantum circuits. Those timings are classical state-vector simulation and say nothing about quantum advantage.
 
 ### Optimization Techniques
 
-1. **Async I/O:** Non-blocking database and API calls
-2. **Thread Pooling:** 8 workers for I/O-bound tasks
-3. **Process Pooling:** 4 workers for CPU-bound calculations
-4. **Circuit Caching:** Pre-compiled quantum circuits
-5. **Tile Caching:** File-based cache with 24h TTL
-6. **Data Chunking:** Memory-efficient large dataset processing
+1. **Async I/O:** non-blocking database and API calls
+2. **Thread pool:** `ThreadPoolExecutor` in `backend/quantum/processor.py` and `algorithms.py`
+3. **Circuit caching:** pre-transpiled quantum circuits
+4. **Tile caching:** file-based cache with a TTL (see `backend/core/tile_generator.py`)
 
 ---
 
@@ -1261,7 +1259,6 @@ http://localhost:8000/quantum/health
 **Sriya Rawat** - UI/UX Developer & Designer
 **Siddhant Dabral** - Junior Developer & QA Support
 
-See [WORK_DISTRIBUTION.md](WORK_DISTRIBUTION.md) for detailed contributions.
 
 ### Project Timeline
 
@@ -1277,13 +1274,7 @@ Planning     Core Dev     Core Dev     Features     Features     Quantum
 - Setup      - Data       - UI         - Charts     - Testing    - Polish
 ```
 
-### Development Statistics
-
-- **Total Commits:** 500+
-- **Development Hours:** 1,050 hours
-- **Code Reviews:** 150+
-- **Bug Fixes:** 200+
-- **Feature Implementations:** 50+
+The git history in this repository has 58 commits from two author names (both are the same person on different machines). I did not track hours, review counts or bug counts, so none are quoted here.
 
 ---
 
@@ -1349,6 +1340,4 @@ IBM Qiskit, FastAPI, Next.js, MapLibre GL JS, NumPy, Pandas, SciPy communities
 
 ---
 
-**Built with dedication to environmental intelligence and quantum-enhanced data processing**
-
-Version 1.0.0 | January 2026
+January 2026

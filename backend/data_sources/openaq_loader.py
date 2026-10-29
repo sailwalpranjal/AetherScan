@@ -1,7 +1,7 @@
 """
 OpenAQ v3 Data Provider for AetherScan.
 
-Robust, rate-limited environmental data collector querying the OpenAQ v3 API.
+Rate-limited environmental data collector querying the OpenAQ v3 API.
 Adheres to strict Zero-Fake-Data and Zero-Cost invariants:
 - Pure OpenAQ v3 endpoints (https://api.openaq.org/v3/)
 - Free tier authenticated via X-API-Key header

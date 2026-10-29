@@ -317,7 +317,7 @@ async def get_quantum_metrics(
     """
     Get quantum processing performance metrics.
 
-    Returns comprehensive statistics about quantum processor performance,
+    Returns statistics about quantum processor performance,
     state management, and database access patterns.
     """
     try:

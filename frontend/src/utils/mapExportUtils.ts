@@ -310,7 +310,7 @@ export async function captureLayerWithExplanation(
 
 /**
  * Capture all layers individually
- * NEW: For comprehensive layer-by-layer analysis in PDF
+ * For layer-by-layer analysis in PDF
  */
 export async function captureAllLayers(
   mapRef: RefObject<MapRef>,
@@ -352,7 +352,7 @@ export async function captureAllLayers(
 }
 
 /**
- * Capture multiple map views for comprehensive analysis
+ * Capture multiple map views for analysis
  * Returns object with different map perspectives
  */
 export async function captureMultipleMapViews(
@@ -920,7 +920,7 @@ export async function renderHighResSatelliteComposite(
 }
 
 /**
- * Capture or generate comprehensive geospatial audit map centered on the target area
+ * Capture or generate a geospatial audit map centered on the target area
  * Guarantees a non-blank, high-resolution, accurately framed satellite or live-layer map.
  */
 export async function captureAuditedAreaMap(

@@ -1,5 +1,5 @@
 """
-Comprehensive Integration Tests for AetherScan Milestone 4.
+Integration tests for AetherScan Milestone 4.
 
 Verifies end-to-end integration across:
 1. Async SQLite Table Creation & Schema Verification (including 'dqs' column).

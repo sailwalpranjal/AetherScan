@@ -12,19 +12,19 @@ AetherScan is a three-tier environmental intelligence platform designed for zero
 
 ### Backend (Render Free Tier)
 - **Framework**: FastAPI (Python 3.11)
-- **Concurrency**: `asyncio` for I/O bounds, `ProcessPoolExecutor` for CPU bounds.
+- **Concurrency**: `asyncio` for I/O-bound work. A `ThreadPoolExecutor` is used in the quantum module. A `ProcessPoolExecutor` is created in `backend/quantum/processor.py` but nothing is submitted to it, and IDW interpolation runs in-process.
 - **Quantum Engine**: Qiskit 0.45.1 (Aer Simulator)
 - **Security**: Token-authenticated API requests.
 
 ### Database / Storage
 - **Current**: Async SQLite.
 - **Constraint**: Render's free tier has an ephemeral filesystem. SQLite will be wiped on restart.
-- **Migration Path**: Migrate to PostgreSQL/PostGIS (e.g., Supabase free tier or Neon) for persistent geospatial indexing and caching.
+- **Migration Path (planned, not implemented)**: Migrate to PostgreSQL/PostGIS (e.g., Supabase free tier or Neon) for persistent geospatial indexing and caching.
 
 ## 2. Ingestion Pipeline
 To handle external APIs responsibly and avoid rate limits:
 - Provider $\rightarrow$ Collector $\rightarrow$ Validator $\rightarrow$ Normalizer $\rightarrow$ Cache/DB
-- The backend will cache API responses (e.g., AQICN) using a robust TTL-based cache.
+- The backend will cache API responses (e.g., AQICN) using a TTL-based cache.
 
 ## 3. Industrial Facility Intelligence
 For a given facility:

@@ -1,0 +1,27 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r backend/requirements.txt pytest pytest-asyncio
+      - name: pytest
+        env:
+          PYTHONPATH: .
+        run: >
+          python -m pytest backend/tests -c backend/pytest.ini
+          --ignore=backend/tests/probe_cdse.py
+          --ignore=backend/tests/probe_ogd_earthdata.py -q

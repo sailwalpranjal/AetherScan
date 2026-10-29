@@ -19,7 +19,7 @@ pyproj>=3.6.0
 owslib>=0.29.0
 
 # Database
-SQLAlchemy>=2.0.0
+SQLAlchemy[asyncio]>=2.0.0
 aiosqlite==0.19.0
 
 # HTTP Client

@@ -12,7 +12,7 @@
 - Establish clean API route boundaries.
 
 ## Phase 2: Trustworthy Data (Weeks 4-7)
-- Implement robust ingestion for OpenAQ, NASA FIRMS, NASA POWER, and Copernicus.
+- Implement ingestion for OpenAQ, NASA FIRMS, NASA POWER, and Copernicus.
 - Enforce Zero Fake Data policy across all routes.
 - Build the Data Quality Engine (calculating DQS and FCS).
 - Establish data provenance tracking for every observation.

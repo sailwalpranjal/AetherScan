@@ -415,7 +415,7 @@ function addExecutiveSummary(pdf: jsPDF, industry: IndustryData, aqiData: AQIDat
   pdf.setTextColor(31, 41, 55)
 
   yPos = addSafeText(pdf, [
-    `This report provides a comprehensive environmental impact assessment for ${industry.name}, located at ${industry.latitude.toFixed(4)}°N, ${industry.longitude.toFixed(4)}°E. The assessment follows CPCB standards and WHO guidelines for air quality evaluation.`,
+    `This report provides an environmental impact assessment for ${industry.name}, located at ${industry.latitude.toFixed(4)}°N, ${industry.longitude.toFixed(4)}°E. The assessment follows CPCB standards and WHO guidelines for air quality evaluation.`,
   ], MARGIN, yPos, MAX_LINE_WIDTH)
 
   yPos += 5
@@ -490,7 +490,7 @@ function addExecutiveSummary(pdf: jsPDF, industry: IndustryData, aqiData: AQIDat
     yPos = boxY + boxHeight + 8
   } else {
     yPos = addSafeText(pdf, [
-      'Air Quality Data: Not available for this location. Real-time monitoring data is required for comprehensive assessment.',
+      'Air Quality Data: Not available for this location. Real-time monitoring data is required for a full assessment.',
     ], MARGIN, yPos, MAX_LINE_WIDTH)
     yPos += 8
   }
@@ -1197,7 +1197,7 @@ async function addMeteorologyAnalysis(
     yPos = addSafeText(pdf, [
       'Meteorological data unavailable. Dispersal analysis requires real-time weather data.',
       '',
-      'Recommendation: Integrate NASA POWER API or local weather station data for comprehensive wind analysis.',
+      'Recommendation: Integrate NASA POWER API or local weather station data for a full wind analysis.',
     ], MARGIN, yPos, MAX_LINE_WIDTH)
     return yPos + 10
   }
@@ -1714,7 +1714,7 @@ function addConclusions(pdf: jsPDF, industry: IndustryData, aqiData: AQIData | n
       )
     } else {
       conclusions.push(
-        `Pollutant Data: Individual pollutant concentrations are not available for this location. Deployment of continuous monitoring systems is recommended for comprehensive assessment.`
+        `Pollutant Data: Individual pollutant concentrations are not available for this location. Deployment of continuous monitoring systems is recommended for a full assessment.`
       )
     }
     conclusions.push('')

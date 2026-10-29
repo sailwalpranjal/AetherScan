@@ -1,5 +1,5 @@
 """
-Comprehensive Unit & Integration Test Suite for NASA FIRMS Data Provider.
+Unit and integration tests for NASA FIRMS Data Provider.
 
 Tests all Milestone 2 requirements:
 1. BaseProvider inheritance and contract signatures.
