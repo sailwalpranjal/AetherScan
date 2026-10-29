@@ -1,5 +1,5 @@
 """
-Comprehensive Unit & Integration Test Suite for OpenAQ v3 Provider.
+Unit and integration tests for OpenAQ v3 Provider.
 
 Tests all Milestone 1 requirements:
 1. BaseProvider inheritance and contract signatures.

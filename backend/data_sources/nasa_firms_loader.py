@@ -1,7 +1,7 @@
 """
 NASA FIRMS (Fire Information for Resource Management System) Data Provider.
 
-Robust, rate-limited environmental data collector querying the NASA FIRMS Area API.
+Rate-limited environmental data collector querying the NASA FIRMS Area API.
 Adheres to strict Zero-Fake-Data and Zero-Cost invariants:
 - Pure NASA FIRMS Area API CSV endpoints
 - Free tier authenticated via MAP_KEY

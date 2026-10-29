@@ -502,7 +502,7 @@ export function getDataQualityBadge(quality: string): {
 }
 
 /**
- * Comprehensive data cleaning for PDF generation
+ * Full data cleaning for PDF generation
  * Filters -999, null, undefined, negative, >max values
  * Returns cleaned data with quality report
  */
@@ -592,7 +592,7 @@ export function cleanDataForPDF(aqiData: AQIData | null): {
 /**
  * Validate and prepare data for PDF generation
  * Returns null if data is insufficient
- * @deprecated Use cleanDataForPDF instead for comprehensive cleaning
+ * @deprecated Use cleanDataForPDF instead for full cleaning
  */
 export function prepareDataForPDF(aqiData: AQIData | null): {
   pollutants: Record<string, number>

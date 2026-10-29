@@ -579,7 +579,7 @@ async def test_full_evidence_chain_structure(populated_db):
 
 @pytest.mark.asyncio
 async def test_get_environmental_context_with_real_db(populated_db):
-    """Verifies get_environmental_context works seamlessly with real DatabaseManager."""
+    """Verifies get_environmental_context works with real DatabaseManager."""
     service = FacilityIntelligenceService(populated_db)
     context = await service.get_environmental_context("101")
 

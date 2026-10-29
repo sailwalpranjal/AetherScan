@@ -538,7 +538,7 @@ class FacilityIntelligenceService:
     def _build_regulatory_summary(self, ground_sensors: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Assembles regulatory compliance evaluation for ground sensor observations.
-        Seamlessly integrates with Milestone 2 regulatory engine if present.
+        Integrates with Milestone 2 regulatory engine if present.
         """
         measurements = []
         for st in ground_sensors:
@@ -621,7 +621,7 @@ class FacilityIntelligenceService:
     ) -> Dict[str, Any]:
         """
         Evaluates observational correlation between FIRMS fires and ambient PM levels.
-        Seamlessly integrates with Milestone 2 analyze_thermal_correlation if present.
+        Integrates with Milestone 2 analyze_thermal_correlation if present.
         Strictly includes non-causality disclaimer.
         """
         # Attempt to use M2 analyze_thermal_correlation if available
@@ -642,7 +642,7 @@ class FacilityIntelligenceService:
         except (ImportError, AttributeError):
             pass
 
-        # Robust baseline evaluation
+        # Baseline evaluation
         fire_count = len(fire_events)
         max_brightness = max((float(f.get("brightness", 0.0)) for f in fire_events), default=0.0)
 
@@ -690,7 +690,7 @@ class FacilityIntelligenceService:
         fallback_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Assemble the comprehensive multi-sensor Environmental Evidence Chain for a facility.
+        Assemble the multi-sensor Environmental Evidence Chain for a facility.
         Adheres strictly to Zero-Fake-Data and Phase 3 Interface Contracts.
 
         Returns full evidence chain:

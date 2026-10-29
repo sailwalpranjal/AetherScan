@@ -31,7 +31,7 @@ class RegulatoryStandard:
         return asdict(self)
 
 
-# Comprehensive Regulatory Standards Registry
+# Regulatory standards registry
 REGULATORY_STANDARDS: Dict[str, RegulatoryStandard] = {
     # -------------------------------------------------------------------------
     # India CPCB (National Ambient Air Quality Standards - NAAQS)

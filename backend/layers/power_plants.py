@@ -11,7 +11,7 @@ async def get_power_plants() -> Dict:
     Get power plant locations from REAL DATA sources
 
     Priority:
-    1. Global Power Plant Database (WRI) - Most comprehensive
+    1. Global Power Plant Database (WRI) - Largest coverage
     2. OpenStreetMap Overpass API - Real-time community data
 
     Returns:

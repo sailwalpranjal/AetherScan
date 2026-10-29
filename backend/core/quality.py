@@ -305,7 +305,7 @@ def get_dqs_breakdown(
     ref_time: Optional[Union[datetime, str, float, int]] = None,
 ) -> Dict[str, float]:
     """
-    Return comprehensive sub-indices breakdown along with final DQS.
+    Return the sub-index breakdown along with final DQS.
     Useful for UI evidence chains and audit logs.
     """
     q_valid = validate_value(parameter, value)
