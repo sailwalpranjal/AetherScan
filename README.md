@@ -1,7 +1,6 @@
 # AetherScan - Environmental Intelligence Platform
 
 [![tests](https://github.com/sailwalpranjal/AetherScan/actions/workflows/ci.yml/badge.svg)](https://github.com/sailwalpranjal/AetherScan/actions/workflows/ci.yml)
-[![licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 
 An air-quality analytics platform that combines ground sensors, satellite products and geospatial layers behind one FastAPI backend and a Next.js map front end. It also generates compliance-style PDF reports and includes a quantum-circuit module that runs on a simulator only. Built by a team of four as a university project; it has not been deployed for or used by any outside organisation that I can document.
 
@@ -1329,7 +1328,7 @@ Solution: Ensure all data is loaded before generating PDF
 
 ## License
 
-MIT, see [LICENSE](LICENSE). The data providers have their own terms; see `docs/DATA_SOURCE_REGISTRY.md`.
+Educational and research use. Ensure compliance with data source terms of service.
 
 ## Acknowledgments
 

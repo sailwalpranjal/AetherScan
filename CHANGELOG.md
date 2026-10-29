@@ -9,13 +9,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 ### Changed
 - README, architecture notes and the paper now say SQLite is in use and PostgreSQL is planned; that the access log is in memory; and that the process pool is created but unused.
 - README no longer quotes latency, "quantum speed-up" or 50-user figures that no script in the repository produces.
-- README licence section now points at the MIT licence.
 
 ### Fixed
 - `SQLAlchemy[asyncio]` in `backend/requirements.txt`, so a clean install pulls in `greenlet` and the async tests can run.
 
 ### Added
-- MIT licence, CI workflow, issue and pull request templates, contributing, security and conduct files.
+- CI workflow, issue and pull request templates, contributing, security and conduct files.
 - Product documents under `docs/product/` and `docs/DOC_AUDIT.md`.
 
 ## [0.1.0] - proposed tag `v0.1.0`
