@@ -703,7 +703,7 @@ npm start
 2. **View Map:** Interactive map loads with default layers
 3. **Add Layers:** Click layer controls to toggle environmental data
 4. **Search Location:** Use search bar to find specific areas
-5. **Generate PDF:** Click "Generate Report" for comprehensive analysis
+5. **Generate PDF:** Click "Generate Report" for the full analysis
 
 ### API Documentation
 
@@ -804,7 +804,7 @@ cd backend
 python run_quantum_validation.py
 ```
 
-This executes comprehensive tests:
+This runs the full set of checks:
 1. Superposition processing with 4 data sources
 2. Entanglement analysis on 4 parameters
 3. Grover's search on 4 candidates
@@ -1158,7 +1158,7 @@ cd backend
 cd backend
 ./venv/Scripts/python.exe validate_quantum_simple.py
 
-# Comprehensive validation (4 quantum algorithms)
+# Full validation (4 quantum algorithms)
 cd backend
 ./venv/Scripts/python.exe run_quantum_validation.py
 ```

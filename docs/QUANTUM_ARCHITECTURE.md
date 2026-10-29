@@ -1,7 +1,7 @@
 # Quantum Architecture
 
 ## 1. Abstraction Layer
-The quantum processing module must abstract the backend to seamlessly swap between simulators and real hardware, decoupling business logic from QPU execution.
+The quantum processing module must abstract the backend to swap between simulators and real hardware, decoupling business logic from QPU execution.
 
 ```python
 class QuantumBackend(ABC):

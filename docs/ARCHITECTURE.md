@@ -24,7 +24,7 @@ AetherScan is a three-tier environmental intelligence platform designed for zero
 ## 2. Ingestion Pipeline
 To handle external APIs responsibly and avoid rate limits:
 - Provider $\rightarrow$ Collector $\rightarrow$ Validator $\rightarrow$ Normalizer $\rightarrow$ Cache/DB
-- The backend will cache API responses (e.g., AQICN) using a robust TTL-based cache.
+- The backend will cache API responses (e.g., AQICN) using a TTL-based cache.
 
 ## 3. Industrial Facility Intelligence
 For a given facility:

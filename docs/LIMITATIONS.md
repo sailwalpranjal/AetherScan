@@ -9,7 +9,7 @@
 ## 2. Infrastructure Limitations
 - **Ephemeral Storage**: The backend is designed for the Render free tier, which resets its filesystem upon spin-down. Persistent operations (caching, logging) must be migrated to a dedicated database.
 - **Cold Starts**: Render free tier instances spin down after inactivity, causing 8-15 second cold start delays.
-- **API Rate Limits**: Over-reliance on live third-party APIs (AQICN, OpenAQ) can result in data unavailability if rate limits are exceeded. Robust caching and fallback states are required.
+- **API Rate Limits**: Over-reliance on live third-party APIs (AQICN, OpenAQ) can result in data unavailability if rate limits are exceeded. Caching and fallback states are needed.
 
 ## 3. Geospatial & Data Limitations
 - **Spatial Resolution**: Satellite column densities (e.g., TROPOMI NO2 at 7x3.5 km) are fundamentally different from point-source ground sensors. Fusing them requires careful spatial representation which may introduce artifacts.
